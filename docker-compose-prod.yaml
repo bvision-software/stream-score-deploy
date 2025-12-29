@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   scoreboard:
-    image: ghcr.io/bncool/stream-score/scoreboard:latest
+    image: ghcr.io/bvision-software/scoreboard:latest
     container_name: scoreboard
     restart: always
     environment:
@@ -11,6 +11,3 @@ services:
       - QT_QPA_PLATFORM=xcb
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-
-# docker compose -f docker-compose-prod.yml pull
-# docker compose -f docker-compose-prod.yml up -d
