@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  scoreboard-prod:
+    container_name: scoreboard-prod
+    profiles: ["prod"]
+    image: ghcr.io/bvision-software/scoreboard:latest
+    network_mode: host
+    restart: always
+
+    environment:
+      CONFIG_FILE: prod
+      DISPLAY: ${DISPLAY}
+      XAUTHORITY: /root/.Xauthority
+      QT_X11_NO_MITSHM: "1"
+      QT_QPA_PLATFORM: xcb
+
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    devices:
+      - /dev/input
+
+
+  scoreboard-dev:
+    container_name: scoreboard-dev
+    profiles: ["dev"]
+    image: scoreboard-dev:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    restart: always
+
+    environment:
+      CONFIG_FILE: local
+      DISPLAY: ${DISPLAY}
+      XAUTHORITY: /root/.Xauthority
+      QT_X11_NO_MITSHM: "1"
+      QT_QPA_PLATFORM: xcb
+
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      - ./configs:/app/configs
+      - ./assets:/app/assets
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    devices:
+      - /dev/input
