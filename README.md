@@ -1,7 +1,12 @@
 # StreamScore Deploy
-Production Docker Compose files for StreamScore.
+Production Docker Compose file for StreamScore.
 
 ```bash
-docker compose -f docker-compose-prod.yaml pull
-docker compose -f docker-compose-prod.yaml up -d
+echo <YOUR_READ_ONLY_TOKEN> | docker login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
+#e.g: echo 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 | docker login ghcr.io -u arslanfirat --password-stdin
+```
+
+```bash
+docker compose --profile prod -f docker-compose.yaml pull
+docker compose --profile prod -f docker-compose.yaml up -d
 ```
