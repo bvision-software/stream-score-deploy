@@ -2,7 +2,6 @@ version: "3.9"
 
 services:
   scoreboard-prod:
-    container_name: scoreboard-prod
     profiles: ["prod"]
     image: ghcr.io/bvision-software/scoreboard:latest
     network_mode: host
@@ -26,7 +25,6 @@ services:
 
 
   scoreboard-dev:
-    container_name: scoreboard-dev
     profiles: ["dev"]
     image: scoreboard-dev:latest
     build:
