@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  scoreboard-prod:
-    profiles: ["prod"]
+  scoreboard:
     image: ghcr.io/bvision-software/scoreboard:latest
+    container_name: scoreboard
     network_mode: host
     restart: always
 
@@ -23,30 +23,10 @@ services:
     devices:
       - /dev/input
 
-
-  scoreboard-dev:
-    profiles: ["dev"]
-    image: scoreboard-dev:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    network_mode: host
+  edge-agent:
+    image: ghcr.io/bvision-software/edge-agent:latest
+    container_name: edge-agent
     restart: always
-
+    network_mode: host
     environment:
-      CONFIG_FILE: local
-      DISPLAY: ${DISPLAY}
-      XAUTHORITY: /root/.Xauthority
-      QT_X11_NO_MITSHM: "1"
-      QT_QPA_PLATFORM: xcb
-
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ${HOME}/.Xauthority:/root/.Xauthority:ro
-      - ./configs:/app/configs
-      - ./assets:/app/assets
-      - ./data:/app/data
-      - ./logs:/app/logs
-
-    devices:
-      - /dev/input
+      FLEET_CONTROLLER_URL: http://78.187.40.81:18000

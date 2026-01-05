@@ -16,6 +16,6 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password
 ```
 3. **Pull & Build and Run service**
 ```bash
-docker compose --profile prod -f docker-compose.yaml pull
-docker compose --profile prod -f docker-compose.yaml up -d
+docker compose -f docker-compose.yaml pull
+docker compose -f docker-compose.yaml up -d
 ```
