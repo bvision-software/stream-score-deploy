@@ -29,4 +29,4 @@ services:
     restart: always
     network_mode: host
     environment:
-      FLEET_CONTROLLER_URL: http://78.187.40.81:18000
+      FLEET_CONTROLLER_URL: http://78.187.40.81:12000
