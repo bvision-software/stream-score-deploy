@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   scoreboard:
-    image: ghcr.io/bvision-software/scoreboard:0.1.0
+    image: ghcr.io/bvision-software/scoreboard:latest
     container_name: scoreboard
     network_mode: host
     restart: always
