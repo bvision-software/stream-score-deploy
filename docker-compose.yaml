@@ -26,10 +26,13 @@ services:
   edge-agent:
     image: ghcr.io/bvision-software/edge-agent:latest
     container_name: edge-agent
-    restart: always
     network_mode: host
+    restart: always
+
     environment:
+      CONFIG_FILE: prod
       FLEET_CONTROLLER_URL: http://78.187.40.81:12000
+
     volumes:
       - /etc/hostname:/etc/hostname:ro
       - /etc/machine-id:/etc/machine-id:ro
