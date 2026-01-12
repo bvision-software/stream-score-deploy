@@ -30,3 +30,6 @@ services:
     network_mode: host
     environment:
       FLEET_CONTROLLER_URL: http://78.187.40.81:12000
+    volumes:
+      - /etc/hostname:/etc/hostname:ro
+      - /etc/machine-id:/etc/machine-id:ro
