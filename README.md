@@ -11,37 +11,48 @@ This setup uses **two docker-compose files**:
 
 ---
 
-## 1. Create GitHub Personal Access Token (classic)
+## 1. Clone Repository
+```bash
+sudo apt update
+sudo apt install git -y
+git clone https://github.com/bvision-software/stream-score-deploy.git
+```
 
-1. Go to
-   GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+## 2. System Setup
+```bash
+chmod +x setup.sh
+bash setup.sh
+```
 
-2. Click **Generate new token (classic)**
+## 3. GitHub Container Registry (GHCR) Authentication
 
-3. Give it a name, e.g.:
+### 3.1 Create GitHub Personal Access Token (classic)
 
-   GHCR_STREAM_SCORE_FIRAT
+1. Go to:
 
-4. Select only:
+   **GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)**
 
-   read:packages – Download packages from GitHub Package Registry
+2. Click **Generate new token (classic)**.
 
-5. Click **Generate token** and copy it.
+3. Give the token a descriptive name, for example:
+
+   **GHCR_STREAM_SCORE_FIRAT**
+
+4. Select only the following permission:
+
+   - `read:packages` — Download packages from GitHub Package Registry
+
+5. Click **Generate token** and copy the generated token.
 
 ---
 
-## 2. Login to GitHub Container Registry
+### 3.2 Login to GitHub Container Registry
 
 ```bash
 echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-# example:
-# echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
-```
 
-## 3. System Setup (Run Once)
-```bash
-chmod +x setup.sh
-sudo -E ./setup.sh
+# Example:
+# echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
 ```
 
 ## 4. Run Edge Agent
