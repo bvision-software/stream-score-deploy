@@ -140,36 +140,48 @@ run glib-compile-schemas "$OVERRIDE_DIR"
 
 echo "[OK] Automatic screen blanking has been disabled."
 
-echo "== Creating Xhost autostart =="
+echo "== Configuring System-wide X11 Access for Docker =="
 
-AUTOSTART_DIR="$USER_HOME/.config/autostart"
-XHOST_SCRIPT="/usr/local/bin/enable_xhost.sh"
+XAUTH_FILE="$USER_HOME/.Xauthority"
 
-mkdir -p "$AUTOSTART_DIR"
+touch "$XAUTH_FILE"
+chown "$USER_NAME:$USER_NAME" "$XAUTH_FILE"
+chmod 644 "$XAUTH_FILE"
 
-cat > "$XHOST_SCRIPT" <<'EOF'
-#!/bin/bash
+# System-wide DISPLAY & XAUTHORITY injection
+cat > /etc/profile.d/x11-display.sh <<EOF
 export DISPLAY=:0
-xhost +SI:localuser:root >/dev/null 2>&1
+export XAUTHORITY=$USER_HOME/.Xauthority
 EOF
 
-chmod +x "$XHOST_SCRIPT"
-chown root:root "$XHOST_SCRIPT"
+chmod +x /etc/profile.d/x11-display.sh
 
-cat > "$AUTOSTART_DIR/xhost.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Enable Xhost
-Exec=$XHOST_SCRIPT
-X-GNOME-Autostart-enabled=true
+# systemd service for permanent xhost permissions
+cat > /etc/systemd/system/xhost.service <<EOF
+[Unit]
+Description=Enable Xhost for Docker GUI
+After=graphical.target
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=$USER_HOME/.Xauthority
+ExecStart=/usr/bin/xhost +local:docker +SI:localuser:root
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
 EOF
 
-chown -R $USER_NAME:$USER_NAME "$AUTOSTART_DIR"
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable xhost.service
 
-echo "[OK] Xhost will now run in the GUI session on every startup."
+echo "[OK] System-wide X11 Docker GUI access configured."
 
 echo "== Setup Completed =="
 echo "Rebooting the device for the changes to take effect..."
+sleep 5
 reboot
 
 # # --------------------------------------------------
