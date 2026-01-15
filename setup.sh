@@ -168,6 +168,9 @@ chown -R $USER_NAME:$USER_NAME "$AUTOSTART_DIR"
 
 echo "[OK] Xhost will now run in the GUI session on every startup."
 
+echo "== Setup Completed =="
+echo "Rebooting the device for the changes to take effect..."
+reboot
 
 # # --------------------------------------------------
 # # 6. KESİN ÇÖZÜM: "System Problem" ve "Update" Pencerelerini Kapatma
@@ -192,9 +195,4 @@ echo "[OK] Xhost will now run in the GUI session on every startup."
 # # Arka planda güncelleme kontrolü yapıp popup açan paketi siliyoruz.
 # apt-get remove -y update-notifier update-notifier-common
 
-# # --------------------------------------------------
-# # Bitiş
-# # --------------------------------------------------
-# echo "== Kurulum Tamamlandı =="
-# echo "Ayarların geçerli olması için cihaz yeniden başlatılıyor..."
-# reboot
+
