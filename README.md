@@ -15,7 +15,7 @@ This setup uses **two docker-compose files**:
 ### 1.1 Install required packages
 ```bash
 sudo apt update
-sudo apt install -y openssh-server git
+sudo apt install openssh-server git -y
 ```
 
 ### 1.2 Find Device IP address
