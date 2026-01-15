@@ -10,29 +10,39 @@ This setup uses **two docker-compose files**:
 | `docker-compose.stack.yml` | Application stack (scoreboard + future services) |
 
 ---
-
 ## 1. Install SSH server and connect via SSH
 
+### 1.1 Install required packages
 ```bash
 sudo apt update
-sudo apt install -y openssh-server
+sudo apt install -y openssh-server git
 ```
 
-### Find IP address
-
+### 1.2 Find Device IP address
 ```bash
 ip a
 ```
 
-### Connect from your computer
-
+### 1.3 Connect from your computer
 ```bash
-ssh USER_NAME@RASPI_IP
+ssh USER_NAME@DEVICE_IP
 ```
 
-## 2. GitHub Container Registry (GHCR) Authentication
+## 2. Clone Repository
+```bash
+git clone https://github.com/bvision-software/stream-score-deploy.git
+cd stream-score-deploy
+```
 
-### 2.1 Create GitHub Personal Access Token (classic)
+## 3. System Setup
+```bash
+chmod +x setup.sh
+bash setup.sh
+```
+
+## 4. GitHub Container Registry (GHCR) Authentication
+
+### 4.1 Create GitHub Personal Access Token (classic)
 
 1. Go to:
 
@@ -52,24 +62,13 @@ ssh USER_NAME@RASPI_IP
 
 ---
 
-### 2.2 Login to GitHub Container Registry
+### 4.2 Login to GitHub Container Registry
 
 ```bash
 echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 
 # Example:
 # echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
-```
-
-## 3. System Setup
-```bash
-chmod +x setup.sh
-bash setup.sh
-```
-
-## 4. Clone Repository
-```bash
-git clone https://github.com/bvision-software/stream-score-deploy.git
 ```
 
 ## 5. Run Services
