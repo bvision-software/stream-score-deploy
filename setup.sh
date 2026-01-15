@@ -13,7 +13,7 @@ TARGET_DOCKER_MAJOR=29
 LOG_FILE_PATH="./logs/setup.log"
 
 BASE_PACKAGES=(
-  openssh-server
+  git
   curl
   ca-certificates
   gnupg
@@ -140,44 +140,34 @@ run glib-compile-schemas "$OVERRIDE_DIR"
 
 echo "[OK] Automatic screen blanking has been disabled."
 
-echo "== Configuring System-wide X11 Access for Docker =="
+echo "== Creating Xhost autostart =="
 
-XAUTH_FILE="$USER_HOME/.Xauthority"
+AUTOSTART_DIR="$USER_HOME/.config/autostart"
+XHOST_SCRIPT="/usr/local/bin/enable_xhost.sh"
 
-touch "$XAUTH_FILE"
-chown "$USER_NAME:$USER_NAME" "$XAUTH_FILE"
-chmod 644 "$XAUTH_FILE"
+mkdir -p "$AUTOSTART_DIR"
 
-# System-wide DISPLAY & XAUTHORITY injection
-cat > /etc/profile.d/x11-display.sh <<EOF
+cat > "$XHOST_SCRIPT" <<'EOF'
+#!/bin/bash
 export DISPLAY=:0
-export XAUTHORITY=$USER_HOME/.Xauthority
+xhost +SI:localuser:root >/dev/null 2>&1
 EOF
 
-chmod +x /etc/profile.d/x11-display.sh
+chmod +x "$XHOST_SCRIPT"
+chown root:root "$XHOST_SCRIPT"
 
-# systemd service for permanent xhost permissions
-cat > /etc/systemd/system/xhost.service <<EOF
-[Unit]
-Description=Enable Xhost for Docker GUI
-After=graphical.target
-
-[Service]
-Type=oneshot
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=$USER_HOME/.Xauthority
-ExecStart=/usr/bin/xhost +local:docker +SI:localuser:root
-RemainAfterExit=yes
-
-[Install]
-WantedBy=graphical.target
+cat > "$AUTOSTART_DIR/xhost.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Enable Xhost
+Exec=$XHOST_SCRIPT
+X-GNOME-Autostart-enabled=true
 EOF
 
-systemctl daemon-reexec
-systemctl daemon-reload
-systemctl enable xhost.service
+chown -R $USER_NAME:$USER_NAME "$AUTOSTART_DIR"
 
-echo "[OK] System-wide X11 Docker GUI access configured."
+echo "[OK] Xhost will now run in the GUI session on every startup."
+
 
 echo "== Setup Completed =="
 echo "Rebooting the device for the changes to take effect..."

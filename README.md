@@ -11,22 +11,28 @@ This setup uses **two docker-compose files**:
 
 ---
 
-## 1. Clone Repository
+## 1. Install SSH server and connect via SSH
+
 ```bash
 sudo apt update
-sudo apt install git -y
-git clone https://github.com/bvision-software/stream-score-deploy.git
+sudo apt install -y openssh-server
 ```
 
-## 2. System Setup
+### Find IP address
+
 ```bash
-chmod +x setup.sh
-bash setup.sh
+ip a
 ```
 
-## 3. GitHub Container Registry (GHCR) Authentication
+### Connect from your computer
 
-### 3.1 Create GitHub Personal Access Token (classic)
+```bash
+ssh USER_NAME@RASPI_IP
+```
+
+## 2. GitHub Container Registry (GHCR) Authentication
+
+### 2.1 Create GitHub Personal Access Token (classic)
 
 1. Go to:
 
@@ -46,7 +52,7 @@ bash setup.sh
 
 ---
 
-### 3.2 Login to GitHub Container Registry
+### 2.2 Login to GitHub Container Registry
 
 ```bash
 echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
@@ -55,13 +61,26 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password
 # echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
 ```
 
-## 4. Run Edge Agent
+## 3. System Setup
+```bash
+chmod +x setup.sh
+bash setup.sh
+```
+
+## 4. Clone Repository
+```bash
+git clone https://github.com/bvision-software/stream-score-deploy.git
+```
+
+## 5. Run Services
+
+### 5.1 Edge Agent
 ```bash
 docker compose -f docker-compose.agent.yaml pull
 docker compose -f docker-compose.agent.yaml up -d
 ```
 
-## 5. Run Application Stack (Scoreboard)
+### 5.2 Run Application Stack (Scoreboard)
 ```bash
 docker compose -f docker-compose.stack.yaml pull
 docker compose -f docker-compose.stack.yaml up -d
