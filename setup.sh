@@ -13,7 +13,6 @@ TARGET_DOCKER_MAJOR=29
 LOG_FILE_PATH="./logs/setup.log"
 
 BASE_PACKAGES=(
-  git
   curl
   ca-certificates
   gnupg
@@ -167,6 +166,15 @@ EOF
 chown -R $USER_NAME:$USER_NAME "$AUTOSTART_DIR"
 
 echo "[OK] Xhost will now run in the GUI session on every startup."
+
+echo "== Ensuring DISPLAY variable in .bashrc =="
+
+if ! grep -q "export DISPLAY=:0" "$USER_HOME/.bashrc"; then
+    echo 'export DISPLAY=:0' >> "$USER_HOME/.bashrc"
+    echo "[OK] DISPLAY=:0 added to $USER_HOME/.bashrc"
+else
+    echo "[SKIP] DISPLAY=:0 already exists in $USER_HOME/.bashrc"
+fi
 
 
 echo "== Setup Completed =="
