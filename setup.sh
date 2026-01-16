@@ -308,6 +308,7 @@ main() {
     # 4. System notifications / updates
     disable_apport
     disable_release_upgrade_prompt
+    disable_update_notifier_popup
 
     log INFO "== Setup Completed =="
     log INFO "Rebooting the device for changes to take effect..."
