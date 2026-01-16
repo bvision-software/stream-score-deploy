@@ -182,8 +182,8 @@ echo "== Disabling system crash reports and update notifications =="
 if [ -f /etc/default/apport ]; then
     sed -i 's/enabled=1/enabled=0/' /etc/default/apport
 fi
-systemctl stop apport || true
-systemctl disable apport || true
+run systemctl stop apport || true
+run systemctl disable apport || true
 echo "[OK] Apport crash reporting disabled."
 
 if [ -f /etc/update-manager/release-upgrades ]; then
