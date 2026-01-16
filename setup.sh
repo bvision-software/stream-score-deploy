@@ -177,32 +177,22 @@ else
 fi
 
 
+echo "== Disabling system crash reports and update notifications =="
+
+if [ -f /etc/default/apport ]; then
+    sed -i 's/enabled=1/enabled=0/' /etc/default/apport
+fi
+systemctl stop apport || true
+systemctl disable apport || true
+echo "[OK] Apport crash reporting disabled."
+
+if [ -f /etc/update-manager/release-upgrades ]; then
+    sed -i 's/^Prompt=.*$/Prompt=never/' /etc/update-manager/release-upgrades
+fi
+echo "[OK] Release upgrade prompt disabled."
+
+
 echo "== Setup Completed =="
 echo "Rebooting the device for the changes to take effect..."
 sleep 5
 reboot
-
-# # --------------------------------------------------
-# # 6. KESİN ÇÖZÜM: "System Problem" ve "Update" Pencerelerini Kapatma
-# # --------------------------------------------------
-# echo "== Sistem Hata Raporları ve Güncelleme Uyarıları Kapatılıyor =="
-
-# # 1. "System program problem detected" hatasını kapat (Apport)
-# # Bu servis her açılışta çökme raporu oluşturup ekrana basar, kapatıyoruz.
-# if [ -f /etc/default/apport ]; then
-#     sed -i 's/enabled=1/enabled=0/' /etc/default/apport
-# fi
-# systemctl stop apport
-# systemctl disable apport
-
-# # 2. "New Ubuntu version is available" uyarısını kapat
-# # Sürüm yükseltme kontrolünü devre dışı bırakır.
-# if [ -f /etc/update-manager/release-upgrades ]; then
-#     sed -i 's/^Prompt=.*$/Prompt=never/' /etc/update-manager/release-upgrades
-# fi
-
-# # 3. Güncelleme Bildirimcisini Sistemden Kaldır (En Temiz Yöntem)
-# # Arka planda güncelleme kontrolü yapıp popup açan paketi siliyoruz.
-# apt-get remove -y update-notifier update-notifier-common
-
-
