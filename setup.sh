@@ -273,18 +273,22 @@ disable_release_upgrade_prompt() {
     fi
 }
 
-# Disable Software Updater popup (update-notifier)
+# Disable Software Updater popup (update-notifier) — idempotent
 disable_update_notifier_popup() {
     local desktop_file="/etc/xdg/autostart/update-notifier.desktop"
 
-    if [ -f "$desktop_file" ]; then
-        if [ ! -x "$desktop_file" ]; then
-            log INFO "Update-notifier autostart already disabled, skipping."
-        else
-            chmod -x "$desktop_file"
-            log INFO "Update-notifier autostart disabled."
-        fi
+    if [ ! -f "$desktop_file" ]; then
+        log INFO "update-notifier autostart file not found, skipping."
+        return
     fi
+
+    if [ ! -x "$desktop_file" ]; then
+        log INFO "Update-notifier autostart already disabled, skipping."
+        return
+    fi
+
+    chmod -x "$desktop_file"
+    log INFO "Update-notifier autostart disabled."
 }
 
 # ==================
