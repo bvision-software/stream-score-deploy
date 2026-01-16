@@ -74,6 +74,10 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password
 ## 5. Run Services
 
 ```bash
+cd stream-score-deploy
+```
+
+```bash
 # Pull latest images
 docker compose -f docker-compose.agent.yaml pull
 docker compose -f docker-compose.stack.yaml pull
