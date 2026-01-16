@@ -73,14 +73,30 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password
 
 ## 5. Run Services
 
-### 5.1 Edge Agent
 ```bash
+# Pull latest images
 docker compose -f docker-compose.agent.yaml pull
-docker compose -f docker-compose.agent.yaml up -d
+docker compose -f docker-compose.stack.yaml pull
+
+# Start services with isolated project names
+docker compose -f docker-compose.agent.yaml -p edge-agent up -d
+docker compose -f docker-compose.stack.yaml -p stack up -d
 ```
 
-### 5.2 Run Application Stack (Scoreboard)
+## Service Management (Shortcuts)
+
+### Stop All Services
 ```bash
-docker compose -f docker-compose.stack.yaml pull
-docker compose -f docker-compose.stack.yaml up -d
+docker compose -f docker-compose.agent.yaml -p edge-agent down
+docker compose -f docker-compose.stack.yaml -p stack down
+```
+
+### Start Only Edge Agent
+```bash
+docker compose -f docker-compose.agent.yaml -p edge-agent up -d
+```
+
+### Start Only Application Stack
+```bash
+docker compose -f docker-compose.stack.yaml -p stack up -d
 ```
