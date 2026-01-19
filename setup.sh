@@ -322,10 +322,21 @@ setup_edge_updater() {
     install_file "$timer_src" "$timer_dst" root root 644
 
     log INFO "Reloading systemd daemon..."
-    run systemctl daemon-reload
+    systemctl daemon-reload || log INFO "systemctl daemon-reload failed but continuing."
 
     log INFO "Enabling and starting updater timer..."
-    run systemctl enable --now edge-updater.timer
+    systemctl enable --now edge-updater.timer || log INFO "Enabling timer failed but continuing."
+
+    sleep 2
+
+    local status
+    status=$(systemctl is-active edge-updater.timer || true)
+    if [[ "$status" == "active" ]]; then
+        log INFO "Edge updater timer is active."
+    else
+        log FATAL "Edge updater timer is not active! Current status: $status"
+        return 1
+    fi
 }
 # ==================
 
