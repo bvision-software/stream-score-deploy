@@ -12,7 +12,7 @@ USER_NAME=pi
 USER_HOME=/home/pi
 TARGET_DOCKER_MAJOR=29
 LOG_FILE_PATH="./logs/setup.log"
-BASE_PACKAGES=(curl ca-certificates gnupg)
+BASE_PACKAGES=(curl ca-certificates gnupg jq)
 # ==================
 
 install_file() {
