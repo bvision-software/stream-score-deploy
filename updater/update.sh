@@ -12,6 +12,7 @@ log() {
     echo "[EDGE-UPDATER] $*" | tee -a "$LOG_FILE"
 }
 
+log "Updater triggered at $(date)"
 
 [ -f "$STATE_FILE" ] || { log "State file not found, skipping update."; exit 0; }
 
@@ -26,8 +27,8 @@ STACK_CURRENT=$(jq -r '.stack."stream-score".version' "$STATE_FILE")
 if [[ -n "$STACK_TARGET" && "$STACK_TARGET" != "$STACK_CURRENT" ]]; then
     log "Updating stream-score $STACK_CURRENT -> $STACK_TARGET"
 
-    docker compose -f "$COMPOSE_STACK" pull
-    docker compose -f "$COMPOSE_STACK" up -d
+    docker compose -f "$COMPOSE_STACK" pull >>"$LOG_FILE" 2>&1
+    docker compose -f "$COMPOSE_STACK" up -d >>"$LOG_FILE" 2>&1
 
     # Update state.json
     jq --arg v "$STACK_TARGET" '.stack."stream-score".version=$v' "$STATE_FILE" > "$STATE_FILE.tmp" \
@@ -41,8 +42,8 @@ fi
 if [[ -n "$AGENT_TARGET" && "$AGENT_TARGET" != "$AGENT_CURRENT" ]]; then
     log "Updating edge-agent $AGENT_CURRENT -> $AGENT_TARGET"
 
-    docker compose -f "$COMPOSE_AGENT" pull
-    docker compose -f "$COMPOSE_AGENT" up -d
+    docker compose -f "$COMPOSE_AGENT" pull >>"$LOG_FILE" 2>&1
+    docker compose -f "$COMPOSE_AGENT" up -d >>"$LOG_FILE" 2>&1
 
     # Update state.json
     jq --arg v "$AGENT_TARGET" '.agent.version=$v' "$STATE_FILE" > "$STATE_FILE.tmp" \
