@@ -318,8 +318,17 @@ setup_edge_updater() {
     local service_dst="/etc/systemd/system/edge-updater.service"
     local timer_dst="/etc/systemd/system/edge-updater.timer"
 
-    install_file "$service_src" "$service_dst" root root 644
-    install_file "$timer_src" "$timer_dst" root root 644
+    if install_file "$service_src" "$service_dst" root root 644; then
+        log INFO "Edge updater service file installed/updated."
+    else
+        log INFO "Edge updater service file already exists, skipping."
+    fi
+
+    if install_file "$timer_src" "$timer_dst" root root 644; then
+        log INFO "Edge updater timer file installed/updated."
+    else
+        log INFO "Edge updater timer file already exists, skipping."
+    fi
 
     log INFO "Reloading systemd daemon..."
     run systemctl daemon-reload || log INFO "systemctl daemon-reload failed but continuing."
