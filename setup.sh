@@ -15,6 +15,26 @@ LOG_FILE_PATH="./logs/setup.log"
 BASE_PACKAGES=(curl ca-certificates gnupg)
 # ==================
 
+install_file() {
+  local src="$1"
+  local dst="$2"
+  local owner="$3"
+  local group="$4"
+  local mode="$5"
+
+  mkdir -p "$(dirname "$dst")"
+
+  if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+    return 1
+  fi
+
+  cp "$src" "$dst"
+  chown "$owner:$group" "$dst"
+  chmod "$mode" "$dst"
+
+  return 0
+}
+
 # ===== LOG DIRECTORY SETUP =====
 mkdir -p "$(dirname "$LOG_FILE_PATH")"
 # ==================
@@ -169,73 +189,68 @@ add_user_to_docker_group() {
 
 # Disable screen blanking and GNOME notifications
 disable_gnome_idle_and_notifications() {
-    local override_dir="/usr/share/glib-2.0/schemas"
-    local override_file="$override_dir/90-kiosk-settings.gschema.override"
+    local schema_dir="/usr/share/glib-2.0/schemas"
+    local target="$schema_dir/90-kiosk-settings.gschema.override"
+    local source="setup/gnome/90-kiosk-settings.gschema.override"
 
-    local desired_content="[org.gnome.desktop.session]
-idle-delay=0
+    log INFO "Checking GNOME kiosk settings..."
 
-[org.gnome.desktop.notifications]
-show-banners=false"
-
-    if [ -f "$override_file" ] && cmp -s <(echo "$desired_content") "$override_file"; then
-        log INFO "GNOME override file already up-to-date, skipping."
-        return
+    if install_file "$source" "$target" root root 644; then
+        log INFO "GNOME kiosk settings updated."
+        log INFO "Compiling GNOME schemas..."
+        run glib-compile-schemas "$schema_dir"
+        log INFO "GNOME schemas compiled successfully."
+    else
+        log INFO "GNOME kiosk settings already applied. No changes needed."
     fi
-
-    log INFO "Disabling screen blanking and GNOME notifications..."
-    echo "$desired_content" > "$override_file"
-
-    run glib-compile-schemas "$override_dir"
-    log INFO "Screen blanking and GNOME notifications disabled."
 }
 
 # Create Xhost autostart script
 setup_xhost_autostart() {
     local autostart_dir="$USER_HOME/.config/autostart"
-    local xhost_script="/usr/local/bin/enable_xhost.sh"
-    local desktop_file="$autostart_dir/xhost.desktop"
 
-    local desired_script='#!/bin/bash
-export DISPLAY=:0
-xhost +SI:localuser:root >/dev/null 2>&1'
+    local script_src="setup/xhost/enable_xhost.sh"
+    local script_dst="/usr/local/bin/enable_xhost.sh"
 
-    local desired_desktop="[Desktop Entry]
-Type=Application
-Name=Enable Xhost
-Exec=$xhost_script
-X-GNOME-Autostart-enabled=true"
+    local desktop_src="setup/xhost/xhost.desktop"
+    local desktop_dst="$autostart_dir/xhost.desktop"
+
+    log INFO "Checking Xhost autostart configuration..."
 
     mkdir -p "$autostart_dir"
 
-    # Script content check
-    if [ -f "$xhost_script" ] && cmp -s <(echo "$desired_script") "$xhost_script" && \
-       [ -f "$desktop_file" ] && cmp -s <(echo "$desired_desktop") "$desktop_file"; then
-        log INFO "Xhost autostart already configured, skipping."
-        return
+    local changed=false
+
+    if install_file "$script_src" "$script_dst" root root 755; then
+        log INFO "Xhost script installed/updated."
+        changed=true
     fi
 
-    log INFO "Creating Xhost autostart..."
+    if install_file "$desktop_src" "$desktop_dst" "$USER_NAME" "$USER_NAME" 644; then
+        log INFO "Xhost autostart desktop entry installed/updated."
+        changed=true
+    fi
 
-    echo "$desired_script" > "$xhost_script"
-    chmod +x "$xhost_script"
-    chown root:root "$xhost_script"
-
-    echo "$desired_desktop" > "$desktop_file"
-    chown -R "$USER_NAME:$USER_NAME" "$autostart_dir"
-
-    log INFO "Xhost autostart configured."
+    if [ "$changed" = false ]; then
+        log INFO "Xhost autostart already configured. No changes needed."
+    fi
 }
+
 
 # Ensure DISPLAY variable in .bashrc
 ensure_display_in_bashrc() {
-    if ! grep -q "export DISPLAY=:0" "$USER_HOME/.bashrc"; then
-        echo 'export DISPLAY=:0' >> "$USER_HOME/.bashrc"
-        log INFO "DISPLAY=:0 added to $USER_HOME/.bashrc"
+    local line="export DISPLAY=:0"
+    local bashrc="$USER_HOME/.bashrc"
+
+    if grep -Fxq "$line" "$bashrc"; then
+        log INFO "DISPLAY already set in $bashrc, skipping."
     else
-        log INFO "DISPLAY=:0 already exists in $USER_HOME/.bashrc, skipping."
+        echo "$line" >> "$bashrc"
+        chown "$USER_NAME:$USER_NAME" "$bashrc"
+        log INFO "DISPLAY added to $bashrc"
     fi
 }
+
 # ==================
 
 # ===== SYSTEM NOTIFICATIONS & UPDATE SETTINGS =====
