@@ -1,0 +1,8 @@
+[Unit]
+Description=Edge OTA Updater
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/stream-score-deploy/updater/update.sh

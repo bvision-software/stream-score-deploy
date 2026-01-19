@@ -308,6 +308,29 @@ disable_update_notifier_popup() {
 
 # ==================
 
+# ===== UPDATER SERVICE =====
+setup_edge_updater() {
+    log INFO "Setting up Edge OTA Updater service..."
+
+    local service_src="updater/edge-updater.service"
+    local timer_src="updater/edge-updater.timer"
+
+    local service_dst="/etc/systemd/system/edge-updater.service"
+    local timer_dst="/etc/systemd/system/edge-updater.timer"
+
+    install_file "$service_src" "$service_dst" root root 644
+    install_file "$timer_src" "$timer_dst" root root 644
+
+    log INFO "Reloading systemd daemon..."
+    run systemctl daemon-reload
+
+    log INFO "Enabling and starting updater timer..."
+    run systemctl enable --now edge-updater.timer
+}
+# ==================
+
+# ===== INITIAL STATE =====
+
 # Initialize edge-agent state file with default versions if missing
 bootstrap_edge_agent_state() {
     local state_dir="/var/lib/edge-agent"
@@ -327,6 +350,7 @@ bootstrap_edge_agent_state() {
 
     log INFO "Initial edge agent state created."
 }
+# ==================
 
 
 main() {
@@ -350,7 +374,10 @@ main() {
     disable_release_upgrade_prompt
     disable_update_notifier_popup
 
-    # 5. Initial state
+    # 5. Setup updater
+    setup_edge_updater
+
+    # 6. Initial state
     bootstrap_edge_agent_state
 
     log INFO "== Setup Completed =="
