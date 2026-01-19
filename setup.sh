@@ -312,11 +312,17 @@ disable_update_notifier_popup() {
 setup_edge_updater() {
     log INFO "Setting up Edge OTA Updater service..."
 
+    local target_dir="/opt/stream-score-deploy/updater"
     local service_src="updater/edge-updater.service"
     local timer_src="updater/edge-updater.timer"
-
     local service_dst="/etc/systemd/system/edge-updater.service"
     local timer_dst="/etc/systemd/system/edge-updater.timer"
+
+    log INFO "Copying updater script to /opt..."
+    mkdir -p "$target_dir"
+    cp -r updater/* "$target_dir"
+    chown -R root:root "$target_dir"
+    chmod +x "$target_dir/update.sh"
 
     if install_file "$service_src" "$service_dst" root root 644; then
         log INFO "Edge updater service file installed/updated."
@@ -337,7 +343,6 @@ setup_edge_updater() {
     run systemctl enable --now edge-updater.timer || log INFO "Enabling timer failed but continuing."
 
     sleep 2
-
     local status
     status=$(systemctl is-active edge-updater.timer || true)
     if [[ "$status" == "active" ]]; then
