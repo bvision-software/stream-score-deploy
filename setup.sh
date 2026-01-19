@@ -308,6 +308,27 @@ disable_update_notifier_popup() {
 
 # ==================
 
+# Initialize edge-agent state file with default versions if missing
+bootstrap_edge_agent_state() {
+    local state_dir="/var/lib/edge-agent"
+    local state_file="$state_dir/state.json"
+
+    if [ -f "$state_file" ]; then
+        log INFO "Edge agent state already exists, skipping bootstrap."
+        return
+    fi
+
+    log INFO "Bootstrapping initial edge agent state..."
+
+    mkdir -p "$state_dir"
+    cp setup/state/initial-state.json "$state_file"
+    chown root:root "$state_file"
+    chmod 644 "$state_file"
+
+    log INFO "Initial edge agent state created."
+}
+
+
 main() {
     log INFO "== RPI Setup Started =="
 
