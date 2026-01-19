@@ -350,6 +350,9 @@ main() {
     disable_release_upgrade_prompt
     disable_update_notifier_popup
 
+    # 5. Initial state
+    bootstrap_edge_agent_state
+
     log INFO "== Setup Completed =="
     log INFO "Rebooting the device for changes to take effect..."
     sleep 5
