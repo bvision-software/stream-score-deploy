@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  scoreboard:
-    image: ghcr.io/bvision-software/scoreboard:latest
-    container_name: scoreboard
+  stream-score:
+    image: ${STREAM_SCORE_IMAGE}
+    container_name: stream-score
     network_mode: host
     restart: always
 
