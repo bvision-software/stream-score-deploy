@@ -312,25 +312,24 @@ disable_update_notifier_popup() {
 setup_edge_updater() {
     log INFO "Setting up Edge OTA Updater service..."
 
-    local target_dir="/opt/stream-score-deploy/updater"
-    local service_src="updater/edge-updater.service"
-    local timer_src="updater/edge-updater.timer"
-    local service_dst="/etc/systemd/system/edge-updater.service"
-    local timer_dst="/etc/systemd/system/edge-updater.timer"
+    local UPDATER_DIR="updater"
+    local UPDATER_SCRIPT="$UPDATER_DIR/update.sh"
+    local SERVICE_SRC="$UPDATER_DIR/edge-updater.service"
+    local TIMER_SRC="$UPDATER_DIR/edge-updater.timer"
+    local SERVICE_DST="/etc/systemd/system/edge-updater.service"
+    local TIMER_DST="/etc/systemd/system/edge-updater.timer"
 
-    log INFO "Copying updater script to /opt..."
-    mkdir -p "$target_dir"
-    cp -r updater/* "$target_dir"
-    chown -R root:root "$target_dir"
-    chmod +x "$target_dir/update.sh"
+    chmod +x "$UPDATER_SCRIPT"
 
-    if install_file "$service_src" "$service_dst" root root 644; then
+    log INFO "Installing systemd service and timer..."
+
+    if install_file "$SERVICE_SRC" "$SERVICE_DST" root root 644; then
         log INFO "Edge updater service file installed/updated."
     else
         log INFO "Edge updater service file already exists, skipping."
     fi
 
-    if install_file "$timer_src" "$timer_dst" root root 644; then
+    if install_file "$TIMER_SRC" "$TIMER_DST" root root 644; then
         log INFO "Edge updater timer file installed/updated."
     else
         log INFO "Edge updater timer file already exists, skipping."

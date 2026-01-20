@@ -5,4 +5,4 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/stream-score-deploy/updater/update.sh
+ExecStart=/home/pi/stream-score-deploy/updater/update.sh
