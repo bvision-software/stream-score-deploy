@@ -14,4 +14,5 @@ services:
     volumes:
       - /etc/hostname:/etc/hostname:ro
       - /etc/machine-id:/etc/machine-id:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
