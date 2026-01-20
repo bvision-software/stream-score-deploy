@@ -4,11 +4,11 @@
     "group": "default"
   },
   "agent": {
-    "version": "0.0.0"
+    "version": "0.1.0"
   },
   "stack": {
     "stream-score": {
-      "version": "0.0.0",
+      "version": "0.1.0",
       "image": "ghcr.io/bvision-software/stream-score:0.1.0"
     }
   }
