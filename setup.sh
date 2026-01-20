@@ -407,7 +407,7 @@ main() {
     log INFO "== Setup Completed =="
     log INFO "Rebooting the device for changes to take effect..."
     sleep 5
-    # reboot
+    reboot
 }
 
 main
