@@ -7,6 +7,17 @@ if [ "$EUID" -ne 0 ]; then
   exec sudo -E bash "$0" "$@"
 fi
 
+ACTION="${1:-install}"
+
+case "$ACTION" in
+  install|uninstall)
+    ;;
+  *)
+    echo "Usage: $0 {install|uninstall}"
+    exit 1
+    ;;
+esac
+
 # ===== CONFIG =====
 USER_NAME=pi
 USER_HOME=/home/pi
@@ -40,7 +51,6 @@ mkdir -p "$(dirname "$LOG_FILE_PATH")"
 # ==================
 
 # ===== LOG & RUN FUNCTIONS =====
-# log <LEVEL> <MESSAGE>
 log() {
     local level="$1"; shift
     local timestamp
@@ -59,13 +69,14 @@ run() {
 }
 # ==================
 
+
 # ===== ERROR TRAP =====
 trap 'log FATAL "Error occurred at line $LINENO. Setup aborted."' ERR
 # ==================
 
+
 # ===== PACKAGE INSTALLATION =====
-# install_if_missing <PACKAGE_NAME>
-# Checks if a package is installed, installs it if missing
+# ==========================================================================================
 install_if_missing() {
     local pkg="$1"
 
@@ -76,8 +87,19 @@ install_if_missing() {
         run apt-get install -y "$pkg"
     fi
 }
+uninstall_if_installed() {
+    local pkg="$1"
 
-# Install base packages
+    if dpkg -s "$pkg" &>/dev/null; then
+        log INFO "Package '$pkg' is installed. Removing..."
+        run apt-get remove -y "$pkg"
+    else
+        log INFO "Package '$pkg' is not installed, skipping."
+    fi
+}
+# ==========================================================================================
+
+# ==========================================================================================
 install_base_packages() {
     log INFO "Installing base packages..."
     for pkg in "${BASE_PACKAGES[@]}"; do
@@ -85,17 +107,25 @@ install_base_packages() {
     done
     log INFO "Base packages installation completed."
 }
-# ==================
+
+uninstall_base_packages() {
+    log INFO "Uninstalling base packages..."
+
+    for pkg in "${BASE_PACKAGES[@]}"; do
+        uninstall_if_installed "$pkg"
+    done
+
+    log INFO "Base packages removal completed."
+}
+# ==========================================================================================
 
 
-# ===== DOCKER FUNCTIONS =====
+# ===== DOCKER =====
 
-# Check if docker command exists
 docker_installed() {
     command -v docker >/dev/null 2>&1
 }
 
-# Get Docker server major version
 docker_major_version() {
     # Wait for Docker service to become active (max 10s)
     local timeout=10
@@ -112,8 +142,7 @@ docker_major_version() {
     docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1 || echo ""
 }
 
-
-# Add Docker official repository
+# ==========================================================================================
 install_docker_repo() {
     log INFO "Adding official Docker repository..."
 
@@ -141,14 +170,39 @@ install_docker_repo() {
     fi
 }
 
-# Install Docker packages
+uninstall_docker_repo() {
+    log INFO "Removing Docker repository..."
+
+    rm -f /etc/apt/sources.list.d/docker.list
+    rm -f /etc/apt/keyrings/docker.asc
+
+    run apt-get update
+}
+# ==========================================================================================
+
+# ==========================================================================================
 install_docker_packages() {
     install_docker_repo
     run apt-get update
     run apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
-# Install or update Docker
+uninstall_docker_packages() {
+    uninstall_docker_repo
+    log INFO "Uninstalling Docker packages..."
+
+    run apt-get remove -y \
+        docker-ce \
+        docker-ce-cli \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-compose-plugin || true
+
+    log INFO "Docker packages removal completed."
+}
+# ==========================================================================================
+
+# ==========================================================================================
 setup_docker() {
     log INFO "Checking Docker installation..."
 
@@ -168,13 +222,26 @@ setup_docker() {
     log INFO "Docker $CURRENT_MAJOR.x is already installed."
 }
 
-# Enables and starts Docker service
+uninstall_docker_setup() {
+    log INFO "Checking Docker uninstall requirements..."
+
+    if ! docker_installed; then
+        log INFO "Docker is not installed. Nothing to uninstall."
+        return
+    fi
+
+    log INFO "Docker is installed. Proceeding with uninstall..."
+    uninstall_docker_packages
+
+}
+# ==========================================================================================
+
 enable_docker_service() {
     log INFO "Enabling Docker service..."
     run systemctl enable --now docker
 }
 
-# Adds user to docker group if not already a member
+# ==========================================================================================
 add_user_to_docker_group() {
     if id -nG "$USER_NAME" | grep -qw docker; then
         log INFO "$USER_NAME is already in the docker group, skipping."
@@ -183,11 +250,19 @@ add_user_to_docker_group() {
         run usermod -aG docker "$USER_NAME"
     fi
 }
-# ==================
+
+remove_user_from_docker_group() {
+    if id -nG "$USER_NAME" | grep -qw docker; then
+        log INFO "Removing $USER_NAME from docker group..."
+        gpasswd -d "$USER_NAME" docker || true
+    else
+        log INFO "$USER_NAME is not in docker group, skipping."
+    fi
+}
+# ==========================================================================================
 
 # ===== GNOME / Xhost SETUP =====
-
-# Disable screen blanking and GNOME notifications
+# ==========================================================================================
 disable_gnome_idle_and_notifications() {
     local schema_dir="/usr/share/glib-2.0/schemas"
     local target="$schema_dir/90-kiosk-settings.gschema.override"
@@ -205,7 +280,24 @@ disable_gnome_idle_and_notifications() {
     fi
 }
 
-# Create Xhost autostart script
+restore_gnome_idle_and_notifications() {
+    local schema_dir="/usr/share/glib-2.0/schemas"
+    local target="$schema_dir/90-kiosk-settings.gschema.override"
+
+    if [ -f "$target" ]; then
+        log INFO "Removing GNOME kiosk settings override..."
+        rm -f "$target"
+
+        log INFO "Recompiling GNOME schemas..."
+        run glib-compile-schemas "$schema_dir"
+        log INFO "GNOME schemas restored."
+    else
+        log INFO "GNOME kiosk override not found, skipping."
+    fi
+}
+# ==========================================================================================
+
+# ==========================================================================================
 setup_xhost_autostart() {
     local autostart_dir="$USER_HOME/.config/autostart"
 
@@ -236,8 +328,17 @@ setup_xhost_autostart() {
     fi
 }
 
+remove_xhost_autostart() {
+    log INFO "Removing Xhost autostart configuration..."
 
-# Ensure DISPLAY variable in .bashrc
+    rm -f /usr/local/bin/enable_xhost.sh
+    rm -f "$USER_HOME/.config/autostart/xhost.desktop"
+
+    log INFO "Xhost autostart removed."
+}
+# ==========================================================================================
+
+# ==========================================================================================
 ensure_display_in_bashrc() {
     local line="export DISPLAY=:0"
     local bashrc="$USER_HOME/.bashrc"
@@ -251,11 +352,22 @@ ensure_display_in_bashrc() {
     fi
 }
 
-# ==================
+remove_display_from_bashrc() {
+    local bashrc="$USER_HOME/.bashrc"
+
+    if grep -Fxq "export DISPLAY=:0" "$bashrc"; then
+        sed -i '/^export DISPLAY=:0$/d' "$bashrc"
+        chown "$USER_NAME:$USER_NAME" "$bashrc"
+        log INFO "DISPLAY removed from $bashrc"
+    else
+        log INFO "DISPLAY not found in $bashrc, skipping."
+    fi
+}
+# ==========================================================================================
+
 
 # ===== SYSTEM NOTIFICATIONS & UPDATE SETTINGS =====
-
-# Disable apport crash reporting
+# ==========================================================================================
 disable_apport() {
     local apport_file="/etc/default/apport"
 
@@ -273,7 +385,24 @@ disable_apport() {
     run systemctl disable apport || true
 }
 
-# Disable release upgrade prompts
+restore_apport() {
+    local apport_file="/etc/default/apport"
+
+    if [ -f "$apport_file" ]; then
+        if grep -q '^enabled=1' "$apport_file"; then
+            log INFO "Apport already enabled, skipping."
+        else
+            sed -i 's/enabled=0/enabled=1/' "$apport_file"
+            log INFO "Apport crash reporting re-enabled."
+        fi
+    fi
+
+    systemctl enable apport || true
+    systemctl start apport || true
+}
+# ==========================================================================================
+
+# ==========================================================================================
 disable_release_upgrade_prompt() {
     local update_file="/etc/update-manager/release-upgrades"
 
@@ -288,7 +417,21 @@ disable_release_upgrade_prompt() {
     fi
 }
 
-# Disable Software Updater popup (update-notifier) — idempotent
+restore_release_upgrade_prompt() {
+    local update_file="/etc/update-manager/release-upgrades"
+
+    if [ -f "$update_file" ]; then
+        if grep -q '^Prompt=never' "$update_file"; then
+            sed -i 's/^Prompt=never/Prompt=lts/' "$update_file"
+            log INFO "Release upgrade prompt restored to default (lts)."
+        else
+            log INFO "Release upgrade prompt already enabled, skipping."
+        fi
+    fi
+}
+# ==========================================================================================
+
+# ==========================================================================================
 disable_update_notifier_popup() {
     local desktop_file="/etc/xdg/autostart/update-notifier.desktop"
 
@@ -306,9 +449,27 @@ disable_update_notifier_popup() {
     log INFO "Update-notifier autostart disabled."
 }
 
-# ==================
+restore_update_notifier_popup() {
+    local desktop_file="/etc/xdg/autostart/update-notifier.desktop"
+
+    if [ ! -f "$desktop_file" ]; then
+        log INFO "update-notifier autostart file not found, skipping."
+        return
+    fi
+
+    if [ -x "$desktop_file" ]; then
+        log INFO "Update-notifier autostart already enabled, skipping."
+        return
+    fi
+
+    chmod +x "$desktop_file"
+    log INFO "Update-notifier autostart enabled."
+}
+# ==========================================================================================
+
 
 # ===== UPDATER SERVICE =====
+# ==========================================================================================
 setup_edge_updater() {
     log INFO "Setting up Edge OTA Updater service..."
 
@@ -351,11 +512,31 @@ setup_edge_updater() {
         return 1
     fi
 }
-# ==================
+
+remove_edge_updater() {
+    log INFO "Removing Edge OTA Updater service..."
+
+    # Stop & disable timer
+    systemctl stop edge-updater.timer 2>/dev/null || true
+    systemctl disable edge-updater.timer 2>/dev/null || true
+
+    # Stop service if running
+    systemctl stop edge-updater.service 2>/dev/null || true
+
+    # Remove systemd unit files
+    rm -f /etc/systemd/system/edge-updater.service
+    rm -f /etc/systemd/system/edge-updater.timer
+
+    log INFO "Reloading systemd daemon..."
+    systemctl daemon-reload
+
+    log INFO "Edge OTA Updater service removed."
+}
+# ==========================================================================================
+
 
 # ===== INITIAL STATE =====
-
-# Initialize edge-agent state file with default versions if missing
+# ==========================================================================================
 bootstrap_edge_agent_state() {
     local state_dir="/var/lib/edge-agent"
     local state_file="$state_dir/state.json"
@@ -374,11 +555,23 @@ bootstrap_edge_agent_state() {
 
     log INFO "Initial edge agent state created."
 }
-# ==================
+
+remove_edge_agent_state() {
+    local state_dir="/var/lib/edge-agent"
+
+    if [ -d "$state_dir" ]; then
+        log INFO "Removing edge agent state directory..."
+        rm -rf "$state_dir"
+        log INFO "Edge agent state removed."
+    else
+        log INFO "Edge agent state directory not found, skipping."
+    fi
+}
+# ==========================================================================================
 
 
 main() {
-    log INFO "== RPI Setup Started =="
+    log INFO "== Install Started =="
 
     # 1. Base packages
     install_base_packages
@@ -410,4 +603,40 @@ main() {
     reboot
 }
 
-main
+uninstall_main() {
+    log INFO "== Uninstall Started =="
+
+    # 1. Base packages
+    uninstall_base_packages
+
+    # 2. Docker
+    uninstall_docker_setup
+    remove_user_from_docker_group
+
+    # 3. GNOME / Display
+    restore_gnome_idle_and_notifications
+    remove_xhost_autostart
+    remove_display_from_bashrc
+
+    # 4. System notifications / updates
+    restore_apport
+    restore_release_upgrade_prompt
+    restore_update_notifier_popup
+
+    # 5. Setup updater
+    remove_edge_updater
+
+    # 6. Initial state
+    remove_edge_agent_state
+
+    log INFO "== Uninstall Completed =="
+    log INFO "Rebooting device..."
+    sleep 5
+    reboot
+}
+
+if [ "$ACTION" = "install" ]; then
+    main
+else
+    uninstall_main
+fi
