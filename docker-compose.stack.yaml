@@ -9,7 +9,7 @@ services:
 
     environment:
       CONFIG_FILE: prod
-      DISPLAY: ${DISPLAY}
+      DISPLAY: ":0"
       XAUTHORITY: /root/.Xauthority
       QT_X11_NO_MITSHM: "1"
       QT_QPA_PLATFORM: xcb
