@@ -44,7 +44,7 @@ STACK_REPO=$(jq -r '.stack."stream-score".image_repo // empty' "$STATE_FILE")
 
 update_stack() {
     if [[ -z "$STACK_TARGET" ]]; then
-        log "stream-score target missing, skipping stack update."
+        log "stream-score target missing, skipping update."
         return
     fi
 
@@ -77,13 +77,18 @@ update_stack() {
 }
 
 update_agent() {
-    if [[ -z "$AGENT_TARGET" || -z "$AGENT_REPO" ]]; then
-        log "edge-agent image_repo or target missing, skipping agent update."
+    if [[ -z "$AGENT_TARGET" ]]; then
+        log "edge-agent target missing, skipping update."
         return
     fi
 
     if [[ "$AGENT_TARGET" == "$AGENT_CURRENT" ]]; then
-        log "edge-agent already at target version ($AGENT_CURRENT), skipping."
+        log "edge-agent already at target version ($AGENT_CURRENT)"
+        return
+    fi
+
+    if [[ -z "$AGENT_REPO" ]]; then
+        log "edge-agent image missing, skipping stack update."
         return
     fi
 
