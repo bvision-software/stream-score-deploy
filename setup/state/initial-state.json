@@ -5,13 +5,14 @@
   },
   "agent": {
     "version": "0.0.0",
-    "target": "0.1.0"
+    "target": "0.1.0",
+    "image_repo": "ghcr.io/bvision-software/edge-agent"
   },
   "stack": {
     "stream-score": {
       "version": "0.0.0",
       "target": "0.1.0",
-      "image": "ghcr.io/bvision-software/stream-score:0.1.0"
+      "image_repo": "ghcr.io/bvision-software/stream-score"
     }
   }
 }
