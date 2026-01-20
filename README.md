@@ -37,7 +37,10 @@ cd stream-score-deploy
 ## 3. System Setup
 ```bash
 chmod +x setup.sh
-bash setup.sh
+./setup.sh install
+
+# To uninstall:
+./setup.sh uninstall
 ```
 
 ## 4. GitHub Container Registry (GHCR) Authentication
