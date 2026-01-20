@@ -17,10 +17,12 @@ mkdir -p "$(dirname "$LOG_FILE")"
 # Logging
 # --------------------------------------------------
 log() {
-    echo "[EDGE-UPDATER] $*" | tee -a "$LOG_FILE"
+    local ts
+    ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "[$ts] $*" | tee -a "$LOG_FILE"
 }
 
-log "Updater triggered at $(date)"
+log "Updater triggered."
 
 # --------------------------------------------------
 # Preconditions
