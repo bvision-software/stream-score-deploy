@@ -65,12 +65,13 @@ bash setup.sh
 ### 4.2 Login to GitHub Container Registry
 
 ```bash
-echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-
+sudo -i
+echo GHCR_DEPLOY_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 # Example:
 # echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
+exit
 ```
-
+<!--
 ## 5. Run Services
 
 ```bash
@@ -78,16 +79,11 @@ cd stream-score-deploy
 ```
 
 ```bash
-# Pull latest images
 docker compose -f docker-compose.agent.yaml pull
-docker compose -f docker-compose.stack.yaml pull
-
-# Start services with isolated project names
 docker compose -f docker-compose.agent.yaml -p edge-agent up -d
-docker compose -f docker-compose.stack.yaml -p stack up -d
-```
+``` -->
 
-## Service Management (Shortcuts)
+<!-- ## Service Management (Shortcuts)
 
 ### Stop All Services
 ```bash
@@ -103,4 +99,4 @@ docker compose -f docker-compose.agent.yaml -p edge-agent up -d
 ### Start Only Application Stack
 ```bash
 docker compose -f docker-compose.stack.yaml -p stack up -d
-```
+``` -->
