@@ -598,9 +598,6 @@ main() {
     bootstrap_edge_agent_state
 
     log INFO "== Setup Completed =="
-    log INFO "Rebooting the device for changes to take effect..."
-    sleep 5
-    reboot
 }
 
 uninstall_main() {
@@ -630,9 +627,6 @@ uninstall_main() {
     remove_edge_agent_state
 
     log INFO "== Uninstall Completed =="
-    log INFO "Rebooting device..."
-    sleep 5
-    reboot
 }
 
 if [ "$ACTION" = "install" ]; then
@@ -640,3 +634,7 @@ if [ "$ACTION" = "install" ]; then
 else
     uninstall_main
 fi
+
+log INFO "Rebooting device..."
+sleep 5
+reboot
