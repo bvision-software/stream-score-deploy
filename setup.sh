@@ -2,11 +2,9 @@
 set -Eeuo pipefail
 
 # ===== ROOT CHECK =====
-if [[ "$EUID" -ne 0 ]]; then
+if [ "$EUID" -ne 0 ]; then
   echo "[INFO] Script not run as root. Re-executing with sudo..."
-  exec sudo \
-    --preserve-env=GHCR_USER,GHCR_DEPLOY_TOKEN \
-    bash "$0" "$@"
+  exec sudo -E bash "$0" "$@"
 fi
 
 ACTION="${1:-install}"
@@ -264,16 +262,19 @@ remove_user_from_docker_group() {
 
 # ==========================================================================================
 docker_login_ghcr() {
-    if [ -z "${GHCR_USER:-}" ] || [ -z "${GHCR_DEPLOY_TOKEN:-}" ]; then
+    if [[ -z "${GHCR_USER:-}" || -z "${GHCR_DEPLOY_TOKEN:-}" ]]; then
         log FATAL "GHCR_USER or GHCR_DEPLOY_TOKEN not set. Please export them before running the setup."
         exit 1
     fi
 
-    log INFO "Logging in to GitHub Container Registry (GHCR)..."
+    log INFO "Logging in to GitHub Container Registry (GHCR) as root..."
+
+    HOME=/root \
     echo "$GHCR_DEPLOY_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin \
-        && log INFO "Docker login successful." \
+        && log INFO "Docker login successful (stored in /root/.docker/config.json)." \
         || { log FATAL "Docker login failed!"; exit 1; }
 }
+
 
 docker_logout_ghcr() {
     log INFO "Logging out from GitHub Container Registry (GHCR)..."
