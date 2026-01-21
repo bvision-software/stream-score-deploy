@@ -62,21 +62,22 @@ update_stack() {
     export STREAM_SCORE_IMAGE="$STACK_IMAGE"
 
     log "Updating stream-score $STACK_CURRENT -> $STACK_TARGET"
-    log "Using image: $STREAM_SCORE_IMAGE"
+    log "Using image: $STACK_IMAGE"
 
     if ! docker pull "$STACK_IMAGE"; then
         log FATAL "Failed to pull image $STACK_IMAGE. Aborting update."
-        exit 1
+        return 0
     fi
 
     if docker compose -f "$COMPOSE_STACK" ps -q stream-score >/dev/null; then
-        run docker compose -f "$COMPOSE_STACK" rm -sf stream-score
+        docker compose -f "$COMPOSE_STACK" rm -sf stream-score
     else
         log INFO "stream-score container not found, skipping removal."
     fi
 
     if docker compose -f "$COMPOSE_STACK" up -d stream-score; then
         log "stream-score container started"
+
         jq --arg v "$STACK_TARGET" \
            '.stack."stream-score".version=$v' \
            "$STATE_FILE" > "$STATE_FILE.tmp" \
@@ -84,7 +85,7 @@ update_stack() {
 
         log "stream-score successfully updated to $STACK_TARGET"
     else
-        log "stream-score update FAILED"
+        log FATAL "stream-score update FAILED"
     fi
 }
 
@@ -108,21 +109,22 @@ update_agent() {
     export EDGE_AGENT_IMAGE="$AGENT_IMAGE"
 
     log "Updating edge-agent $AGENT_CURRENT -> $AGENT_TARGET"
-    log "Using agent image: $EDGE_AGENT_IMAGE"
+    log "Using image: $AGENT_IMAGE"
 
     if ! docker pull "$AGENT_IMAGE"; then
         log FATAL "Failed to pull image $AGENT_IMAGE. Aborting update."
-        exit 1
+        return 0
     fi
 
     if docker compose -f "$COMPOSE_AGENT" ps -q edge-agent >/dev/null; then
-        run docker compose -f "$COMPOSE_AGENT" rm -sf edge-agent
+        docker compose -f "$COMPOSE_AGENT" rm -sf edge-agent
     else
         log INFO "edge-agent container not found, skipping removal."
     fi
 
     if docker compose -f "$COMPOSE_AGENT" up -d edge-agent; then
         log "edge-agent container started"
+
         jq --arg v "$AGENT_TARGET" \
            '.agent.version=$v' \
            "$STATE_FILE" > "$STATE_FILE.tmp" \
@@ -130,7 +132,7 @@ update_agent() {
 
         log "edge-agent successfully updated to $AGENT_TARGET"
     else
-        log "edge-agent update FAILED"
+        log FATAL "edge-agent update FAILED"
     fi
 }
 
