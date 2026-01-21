@@ -263,16 +263,26 @@ remove_user_from_docker_group() {
 # ==========================================================================================
 docker_login_ghcr() {
     if [[ -z "${GHCR_USER:-}" || -z "${GHCR_DEPLOY_TOKEN:-}" ]]; then
-        log FATAL "GHCR_USER or GHCR_DEPLOY_TOKEN not set. Please export them before running the setup."
+        log FATAL "GHCR_USER or GHCR_DEPLOY_TOKEN not set."
         exit 1
     fi
 
     log INFO "Logging in to GitHub Container Registry (GHCR) as root..."
 
-    HOME=/root \
-    echo "$GHCR_DEPLOY_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin \
-        && log INFO "Docker login successful (stored in /root/.docker/config.json)." \
-        || { log FATAL "Docker login failed!"; exit 1; }
+    export HOME=/root
+    mkdir -p /root/.docker
+
+    echo "$GHCR_DEPLOY_TOKEN" | docker login ghcr.io \
+        -u "$GHCR_USER" \
+        --password-stdin \
+        >/dev/null 2>&1 \
+        || {
+            log FATAL "Docker login failed!"
+            exit 1
+        }
+
+    chmod 600 /root/.docker/config.json
+    log INFO "Docker login successful (root context)."
 }
 
 
