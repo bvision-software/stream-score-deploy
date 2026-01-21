@@ -10,42 +10,7 @@ This setup uses **two docker-compose files**:
 | `docker-compose.stack.yml` | Application stack (scoreboard + future services) |
 
 ---
-## 1. Install SSH server and connect via SSH
-
-### 1.1 Install required packages
-```bash
-sudo apt update
-sudo apt install openssh-server git -y
-```
-
-### 1.2 Find Device IP address
-```bash
-ip a
-```
-
-### 1.3 Connect from your computer
-```bash
-ssh USER_NAME@DEVICE_IP
-```
-
-## 2. Clone Repository
-```bash
-git clone https://github.com/bvision-software/stream-score-deploy.git
-cd stream-score-deploy
-```
-
-## 3. System Setup
-```bash
-chmod +x setup.sh
-./setup.sh install
-
-# To uninstall:
-./setup.sh uninstall
-```
-
-## 4. GitHub Container Registry (GHCR) Authentication
-
-### 4.1 Create GitHub Personal Access Token (classic)
+## 1. Create GitHub Personal Access Token (classic)
 
 1. Go to:
 
@@ -63,43 +28,44 @@ chmod +x setup.sh
 
 5. Click **Generate token** and copy the generated token.
 
----
+## 2. Install SSH server and connect via SSH
 
-### 4.2 Login to GitHub Container Registry
-
+### 2.1 Install required packages
 ```bash
-sudo -i
-echo GHCR_DEPLOY_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-# Example:
-# echo ghp_xxxxxxxxxxxxx | docker login ghcr.io -u arslanfirat --password-stdin
-exit
+sudo apt update
+sudo apt install openssh-server git -y
 ```
-<!--
-## 5. Run Services
 
+### 2.2 Find Device IP address
 ```bash
+ip a
+```
+
+### 2.3 Connect from your computer
+```bash
+ssh USER_NAME@DEVICE_IP
+```
+
+## 3. Clone Repository
+```bash
+git clone https://github.com/bvision-software/stream-score-deploy.git
 cd stream-score-deploy
 ```
 
+### 4. Export GitHub Container Registry (GHCR) Credentials
 ```bash
-docker compose -f docker-compose.agent.yaml pull
-docker compose -f docker-compose.agent.yaml -p edge-agent up -d
-``` -->
-
-<!-- ## Service Management (Shortcuts)
-
-### Stop All Services
-```bash
-docker compose -f docker-compose.agent.yaml -p edge-agent down
-docker compose -f docker-compose.stack.yaml -p stack down
+export GHCR_USER="your_ghcr_user_name"
+export GHCR_DEPLOY_TOKEN="your_ghcr_deploy_token"
+#example:
+#export GHCR_USER="arslanfirat"
+#export GHCR_DEPLOY_TOKEN="ghp_xxxxxxxxxxxxx"
 ```
 
-### Start Only Edge Agent
+## 5. System Setup
 ```bash
-docker compose -f docker-compose.agent.yaml -p edge-agent up -d
-```
+chmod +x setup.sh
+./setup.sh install
 
-### Start Only Application Stack
-```bash
-docker compose -f docker-compose.stack.yaml -p stack up -d
-``` -->
+# To uninstall:
+./setup.sh uninstall
+```
