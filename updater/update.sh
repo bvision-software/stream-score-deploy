@@ -64,6 +64,17 @@ update_stack() {
     log "Updating stream-score $STACK_CURRENT -> $STACK_TARGET"
     log "Using image: $STREAM_SCORE_IMAGE"
 
+    if ! docker pull "$STACK_IMAGE"; then
+        log FATAL "Failed to pull image $STACK_IMAGE. Aborting update."
+        exit 1
+    fi
+
+    if docker compose -f "$COMPOSE_STACK" ps -q stream-score >/dev/null; then
+        run docker compose -f "$COMPOSE_STACK" rm -sf stream-score
+    else
+        log INFO "stream-score container not found, skipping removal."
+    fi
+
     if docker compose -f "$COMPOSE_STACK" up -d stream-score; then
         log "stream-score container started"
         jq --arg v "$STACK_TARGET" \
@@ -98,6 +109,17 @@ update_agent() {
 
     log "Updating edge-agent $AGENT_CURRENT -> $AGENT_TARGET"
     log "Using agent image: $EDGE_AGENT_IMAGE"
+
+    if ! docker pull "$AGENT_IMAGE"; then
+        log FATAL "Failed to pull image $AGENT_IMAGE. Aborting update."
+        exit 1
+    fi
+
+    if docker compose -f "$COMPOSE_AGENT" ps -q edge-agent >/dev/null; then
+        run docker compose -f "$COMPOSE_AGENT" rm -sf edge-agent
+    else
+        log INFO "edge-agent container not found, skipping removal."
+    fi
 
     if docker compose -f "$COMPOSE_AGENT" up -d edge-agent; then
         log "edge-agent container started"
