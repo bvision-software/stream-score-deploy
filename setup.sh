@@ -2,9 +2,11 @@
 set -Eeuo pipefail
 
 # ===== ROOT CHECK =====
-if [ "$EUID" -ne 0 ]; then
+if [[ "$EUID" -ne 0 ]]; then
   echo "[INFO] Script not run as root. Re-executing with sudo..."
-  exec sudo -E bash "$0" "$@"
+  exec sudo \
+    --preserve-env=GHCR_USER,GHCR_DEPLOY_TOKEN \
+    bash "$0" "$@"
 fi
 
 ACTION="${1:-install}"
@@ -622,6 +624,9 @@ main() {
     bootstrap_edge_agent_state
 
     log INFO "== Setup Completed =="
+    log INFO "Rebooting device..."
+    sleep 5
+    reboot
 }
 
 uninstall_main() {
@@ -652,6 +657,9 @@ uninstall_main() {
     remove_edge_agent_state
 
     log INFO "== Uninstall Completed =="
+    log INFO "Rebooting device..."
+    sleep 5
+    reboot
 }
 
 if [ "$ACTION" = "install" ]; then
@@ -660,6 +668,3 @@ else
     uninstall_main
 fi
 
-log INFO "Rebooting device..."
-sleep 5
-reboot
