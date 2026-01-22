@@ -569,7 +569,8 @@ remove_edge_updater() {
 # ===== INITIAL STATE =====
 # ==========================================================================================
 bootstrap_edge_agent_state() {
-    local state_file="./state/state.json"
+    local state_dir="./state"
+    local state_file="$state_dir/state.json"
 
     if [[ -f "$state_file" ]]; then
         log INFO "Edge agent state already exists, skipping bootstrap. path=$state_file"
@@ -577,6 +578,8 @@ bootstrap_edge_agent_state() {
     fi
 
     log INFO "Bootstrapping initial edge agent state... path=$state_file"
+
+    mkdir -p "$state_dir"
 
     cp setup/state/initial-state.json "$state_file"
     chown root:root "$state_file"
@@ -586,14 +589,19 @@ bootstrap_edge_agent_state() {
 }
 
 remove_edge_agent_state() {
-    local state_file="./state/state.json"
+    local state_dir="./state"
+    local state_file="$state_dir/state.json"
 
     if [[ -f "$state_file" ]]; then
         log INFO "Removing edge agent state file... path=$state_file"
         rm -f "$state_file"
-        log INFO "Edge agent state file removed."
     else
         log INFO "Edge agent state file not found, skipping. path=$state_file"
+    fi
+
+    if [[ -d "$state_dir" && -z "$(ls -A "$state_dir")" ]]; then
+        rmdir "$state_dir"
+        log INFO "State directory removed (was empty). path=$state_dir"
     fi
 }
 # ==========================================================================================
