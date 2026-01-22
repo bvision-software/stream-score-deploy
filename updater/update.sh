@@ -9,7 +9,7 @@ REPO_ROOT="$(dirname "$(realpath "$0")")/.."
 COMPOSE_AGENT="$REPO_ROOT/docker-compose.agent.yaml"
 COMPOSE_STACK="$REPO_ROOT/docker-compose.stack.yaml"
 LOG_FILE="$REPO_ROOT/logs/updater.log"
-STATE_FILE="/var/lib/edge-agent/state.json"
+STATE_FILE="state.json"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
