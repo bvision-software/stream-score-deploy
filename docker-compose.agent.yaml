@@ -12,5 +12,5 @@ services:
     volumes:
       - /etc/hostname:/etc/hostname:ro
       - /etc/machine-id:/etc/machine-id:ro
-      - ./data:/app/data
+      - ./state:/app/state
       - ./logs:/app/logs
