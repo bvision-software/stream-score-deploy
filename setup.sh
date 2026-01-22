@@ -569,8 +569,7 @@ remove_edge_updater() {
 # ===== INITIAL STATE =====
 # ==========================================================================================
 bootstrap_edge_agent_state() {
-    local state_dir="/var/lib/edge-agent"
-    local state_file="$state_dir/state.json"
+    local state_file="./state.json"
 
     if [ -f "$state_file" ]; then
         log INFO "Edge agent state already exists, skipping bootstrap."
@@ -588,7 +587,7 @@ bootstrap_edge_agent_state() {
 }
 
 remove_edge_agent_state() {
-    local state_dir="/var/lib/edge-agent"
+    local state_file="./state.json"
 
     if [ -d "$state_dir" ]; then
         log INFO "Removing edge agent state directory..."
