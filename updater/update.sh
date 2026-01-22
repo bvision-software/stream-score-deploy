@@ -26,7 +26,7 @@ log() {
 # GUARD: state file
 # --------------------------------------------------
 if [[ ! -f "$STATE_FILE" ]]; then
-    log "State file not found, skipping update."
+    log "State file not found, skipping update. path=$STATE_FILE"
     exit 0
 fi
 
