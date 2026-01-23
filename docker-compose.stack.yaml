@@ -4,6 +4,7 @@ services:
     container_name: stream-score
     network_mode: host
     restart: always
+    privileged: true
 
     environment:
       CONFIG_FILE: prod
