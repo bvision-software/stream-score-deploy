@@ -138,6 +138,6 @@ update_agent() {
 
 # --- MAIN EXECUTION ---
 log "Updater triggered."
-update_stack
 update_agent
+update_stack
 log "Updater run completed."
