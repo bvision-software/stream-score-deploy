@@ -10,6 +10,7 @@ COMPOSE_AGENT="$REPO_ROOT/docker-compose.agent.yaml"
 COMPOSE_STACK="$REPO_ROOT/docker-compose.stack.yaml"
 LOG_FILE="$REPO_ROOT/logs/updater.log"
 STATE_FILE="$REPO_ROOT/state/state.json"
+DATA_DIR="$REPO_ROOT/data"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -78,15 +79,41 @@ update_stack() {
     if docker compose -f "$COMPOSE_STACK" up -d stream-score; then
         log "stream-score container started"
 
-        jq --arg v "$STACK_TARGET" \
-           '.stack."stream-score".version=$v' \
-           "$STATE_FILE" > "$STATE_FILE.tmp" \
-           && mv "$STATE_FILE.tmp" "$STATE_FILE"
+        CID=$(docker compose -f "$COMPOSE_STACK" ps -q stream-score)
+        sleep 5
 
-        log "stream-score successfully updated to $STACK_TARGET"
+        if [[ "$(docker inspect -f '{{.State.Running}}' "$CID")" == "true" ]]; then
+            log "Container is running. Archiving old DB..."
+
+            if [[ -d "$DATA_DIR" ]]; then
+                TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+                OLD_DATA_DIR="$REPO_ROOT/old_data"
+                BACKUP_PATH="$OLD_DATA_DIR/data_$TIMESTAMP"
+
+                mkdir -p "$OLD_DATA_DIR"
+
+                mv "$DATA_DIR" "$BACKUP_PATH"
+                mkdir -p "$DATA_DIR"
+
+                log "Old database moved to $BACKUP_PATH"
+            else
+                log "Data directory not found, skipping DB archive."
+            fi
+
+            jq --arg v "$STACK_TARGET" \
+            '.stack."stream-score".version=$v' \
+            "$STATE_FILE" > "$STATE_FILE.tmp" \
+            && mv "$STATE_FILE.tmp" "$STATE_FILE"
+
+            log "stream-score successfully updated to $STACK_TARGET"
+        else
+            log FATAL "Container failed to start properly. DB NOT archived."
+            return 1
+        fi
     else
         log FATAL "stream-score update FAILED"
     fi
+
 }
 
 update_agent() {
