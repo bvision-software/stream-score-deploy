@@ -8,6 +8,7 @@ services:
     environment:
       CONFIG_FILE: prod
       FLEET_CONTROLLER_URL: http://78.187.40.81:12000
+      TZ: Europe/Istanbul
 
     volumes:
       - /etc/hostname:/etc/hostname:ro
