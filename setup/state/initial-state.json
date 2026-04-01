@@ -11,7 +11,7 @@
   "stack": {
     "stream-score": {
       "version": "0.0.0",
-      "target": "0.1.8",
+      "target": "0.1.5",
       "image_repo": "ghcr.io/bvision-software/stream-score"
     }
   }
