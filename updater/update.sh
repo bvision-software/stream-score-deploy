@@ -12,6 +12,8 @@ LOG_FILE="$REPO_ROOT/logs/updater.log"
 STATE_FILE="$REPO_ROOT/state/state.json"
 DATA_DIR="$REPO_ROOT/data"
 
+export HOME=/home/pi
+
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # --------------------------------------------------
@@ -66,14 +68,27 @@ update_stack() {
     log "Using image: $STACK_IMAGE"
 
     if ! docker pull "$STACK_IMAGE"; then
-        log FATAL "Failed to pull image $STACK_IMAGE. Aborting update."
-        return 0
+        log "FATAL: Failed to pull image $STACK_IMAGE. Aborting update."
+        return 1
     fi
 
-    if docker compose -f "$COMPOSE_STACK" ps -q stream-score >/dev/null; then
+    BACKUP_PATH=""
+    if [[ -d "$DATA_DIR" ]]; then
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        OLD_DATA_DIR="$REPO_ROOT/old_data"
+        BACKUP_PATH="$OLD_DATA_DIR/data_$TIMESTAMP"
+        mkdir -p "$OLD_DATA_DIR"
+        mv "$DATA_DIR" "$BACKUP_PATH"
+        mkdir -p "$DATA_DIR"
+        log "Old database moved to $BACKUP_PATH"
+    else
+        log "Data directory not found, skipping DB archive."
+    fi
+
+    if docker compose -f "$COMPOSE_STACK" ps -q stream-score >/dev/null 2>&1; then
         docker compose -f "$COMPOSE_STACK" rm -sf stream-score
     else
-        log INFO "stream-score container not found, skipping removal."
+        log "stream-score container not found, skipping removal."
     fi
 
     if docker compose -f "$COMPOSE_STACK" up -d stream-score; then
@@ -83,37 +98,33 @@ update_stack() {
         sleep 5
 
         if [[ "$(docker inspect -f '{{.State.Running}}' "$CID")" == "true" ]]; then
-            log "Container is running. Archiving old DB..."
-
-            if [[ -d "$DATA_DIR" ]]; then
-                TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-                OLD_DATA_DIR="$REPO_ROOT/old_data"
-                BACKUP_PATH="$OLD_DATA_DIR/data_$TIMESTAMP"
-
-                mkdir -p "$OLD_DATA_DIR"
-
-                mv "$DATA_DIR" "$BACKUP_PATH"
-                mkdir -p "$DATA_DIR"
-
-                log "Old database moved to $BACKUP_PATH"
-            else
-                log "Data directory not found, skipping DB archive."
-            fi
-
             jq --arg v "$STACK_TARGET" \
-            '.stack."stream-score".version=$v' \
-            "$STATE_FILE" > "$STATE_FILE.tmp" \
+               '.stack."stream-score".version=$v' \
+               "$STATE_FILE" > "$STATE_FILE.tmp" \
             && mv "$STATE_FILE.tmp" "$STATE_FILE"
-
             log "stream-score successfully updated to $STACK_TARGET"
         else
-            log FATAL "Container failed to start properly. DB NOT archived."
+            log "FATAL: Container failed to start properly."
+
+            if [[ -n "$BACKUP_PATH" && -d "$BACKUP_PATH" ]]; then
+                rm -rf "$DATA_DIR"
+                mv "$BACKUP_PATH" "$DATA_DIR"
+                log "Data rolled back from $BACKUP_PATH"
+            fi
+
             return 1
         fi
     else
-        log FATAL "stream-score update FAILED"
-    fi
+        log "FATAL: docker compose up failed."
 
+        if [[ -n "$BACKUP_PATH" && -d "$BACKUP_PATH" ]]; then
+            rm -rf "$DATA_DIR"
+            mv "$BACKUP_PATH" "$DATA_DIR"
+            log "Data rolled back from $BACKUP_PATH"
+        fi
+
+        return 1
+    fi
 }
 
 update_agent() {
@@ -128,7 +139,7 @@ update_agent() {
     fi
 
     if [[ -z "$AGENT_REPO" ]]; then
-        log "edge-agent image missing, skipping stack update."
+        log "edge-agent image_repo missing, skipping agent update."
         return
     fi
 
@@ -139,27 +150,35 @@ update_agent() {
     log "Using image: $AGENT_IMAGE"
 
     if ! docker pull "$AGENT_IMAGE"; then
-        log FATAL "Failed to pull image $AGENT_IMAGE. Aborting update."
-        return 0
+        log "FATAL: Failed to pull image $AGENT_IMAGE. Aborting update."
+        return 1
     fi
 
-    if docker compose -f "$COMPOSE_AGENT" ps -q edge-agent >/dev/null; then
+    if docker compose -f "$COMPOSE_AGENT" ps -q edge-agent >/dev/null 2>&1; then
         docker compose -f "$COMPOSE_AGENT" rm -sf edge-agent
     else
-        log INFO "edge-agent container not found, skipping removal."
+        log "edge-agent container not found, skipping removal."
     fi
 
     if docker compose -f "$COMPOSE_AGENT" up -d edge-agent; then
         log "edge-agent container started"
 
-        jq --arg v "$AGENT_TARGET" \
-           '.agent.version=$v' \
-           "$STATE_FILE" > "$STATE_FILE.tmp" \
-           && mv "$STATE_FILE.tmp" "$STATE_FILE"
+        CID=$(docker compose -f "$COMPOSE_AGENT" ps -q edge-agent)
+        sleep 5
 
-        log "edge-agent successfully updated to $AGENT_TARGET"
+        if [[ "$(docker inspect -f '{{.State.Running}}' "$CID")" == "true" ]]; then
+            jq --arg v "$AGENT_TARGET" \
+               '.agent.version=$v' \
+               "$STATE_FILE" > "$STATE_FILE.tmp" \
+            && mv "$STATE_FILE.tmp" "$STATE_FILE"
+            log "edge-agent successfully updated to $AGENT_TARGET"
+        else
+            log "FATAL: edge-agent container failed to start properly."
+            return 1
+        fi
     else
-        log FATAL "edge-agent update FAILED"
+        log "FATAL: docker compose up failed for edge-agent."
+        return 1
     fi
 }
 

@@ -23,7 +23,11 @@ USER_NAME=pi
 USER_HOME=/home/pi
 TARGET_DOCKER_MAJOR=29
 LOG_FILE_PATH="./logs/setup.log"
-BASE_PACKAGES=(curl ca-certificates gnupg jq)
+XINITRC_PATH="$USER_HOME/.xinitrc"
+BASH_PROFILE_PATH="$USER_HOME/.bash_profile"
+AUTOLOGIN_DIR="/etc/systemd/system/getty@tty1.service.d"
+AUTOLOGIN_CONF="$AUTOLOGIN_DIR/autologin.conf"
+BASE_PACKAGES=(curl ca-certificates gnupg jq xserver-xorg-core xserver-xorg-video-fbdev xinit x11-xserver-utils openbox)
 # ==================
 
 install_file() {
@@ -102,6 +106,7 @@ uninstall_if_installed() {
 # ==========================================================================================
 install_base_packages() {
     log INFO "Installing base packages..."
+    run apt-get update
     for pkg in "${BASE_PACKAGES[@]}"; do
         install_if_missing "$pkg"
     done
@@ -150,7 +155,7 @@ install_docker_repo() {
 
     # Add GPG key if missing
     if [ ! -f /etc/apt/keyrings/docker.asc ]; then
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
         chmod a+r /etc/apt/keyrings/docker.asc
         log INFO "Docker GPG key added."
     else
@@ -162,7 +167,7 @@ install_docker_repo() {
 
     # Add repo if missing
     if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $CODENAME stable" \
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $CODENAME stable" \
             | tee /etc/apt/sources.list.d/docker.list > /dev/null
         log INFO "Docker repository added."
     else
@@ -279,6 +284,11 @@ docker_login_ghcr() {
 
     chmod 600 /root/.docker/config.json
     log INFO "Docker login successful (stored in /root/.docker/config.json)."
+
+    mkdir -p "$USER_HOME/.docker"
+    cp /root/.docker/config.json "$USER_HOME/.docker/config.json"
+    chown -R "$USER_NAME:$USER_NAME" "$USER_HOME/.docker"
+    log INFO "Docker credentials copied to $USER_NAME home."
 }
 
 docker_logout_ghcr() {
@@ -286,86 +296,139 @@ docker_logout_ghcr() {
     docker logout ghcr.io \
         && log INFO "Docker logout successful." \
         || log INFO "Docker logout failed or not logged in."
+
+    rm -f "$USER_HOME/.docker/config.json"
+    log INFO "Docker credentials removed from $USER_NAME home."
 }
 # ==========================================================================================
 
-
-# ==========================================================================================
-
-# ===== GNOME / Xhost SETUP =====
-# ==========================================================================================
-disable_gnome_idle_and_notifications() {
-    local schema_dir="/usr/share/glib-2.0/schemas"
-    local target="$schema_dir/90-kiosk-settings.gschema.override"
-    local source="setup/gnome/90-kiosk-settings.gschema.override"
-
-    log INFO "Checking GNOME kiosk settings..."
-
-    if install_file "$source" "$target" root root 644; then
-        log INFO "GNOME kiosk settings updated."
-        log INFO "Compiling GNOME schemas..."
-        run glib-compile-schemas "$schema_dir"
-        log INFO "GNOME schemas compiled successfully."
-    else
-        log INFO "GNOME kiosk settings already applied. No changes needed."
-    fi
-}
-
-restore_gnome_idle_and_notifications() {
-    local schema_dir="/usr/share/glib-2.0/schemas"
-    local target="$schema_dir/90-kiosk-settings.gschema.override"
-
-    if [ -f "$target" ]; then
-        log INFO "Removing GNOME kiosk settings override..."
-        rm -f "$target"
-
-        log INFO "Recompiling GNOME schemas..."
-        run glib-compile-schemas "$schema_dir"
-        log INFO "GNOME schemas restored."
-    else
-        log INFO "GNOME kiosk override not found, skipping."
-    fi
-}
-# ==========================================================================================
-
+# ===== Xhost SETUP =====
 # ==========================================================================================
 setup_xhost_autostart() {
-    local autostart_dir="$USER_HOME/.config/autostart"
-
-    local script_src="setup/xhost/enable_xhost.sh"
     local script_dst="/usr/local/bin/enable_xhost.sh"
 
-    local desktop_src="setup/xhost/xhost.desktop"
-    local desktop_dst="$autostart_dir/xhost.desktop"
+    log INFO "Setting up Xhost script..."
 
-    log INFO "Checking Xhost autostart configuration..."
+    cat > "$script_dst" <<'EOF'
+#!/bin/bash
+export DISPLAY=:0
+xhost +SI:localuser:root >/dev/null 2>&1
+EOF
 
-    mkdir -p "$autostart_dir"
+    chown root:root "$script_dst"
+    chmod 755 "$script_dst"
 
-    local changed=false
-
-    if install_file "$script_src" "$script_dst" root root 755; then
-        log INFO "Xhost script installed/updated."
-        changed=true
-    fi
-
-    if install_file "$desktop_src" "$desktop_dst" "$USER_NAME" "$USER_NAME" 644; then
-        log INFO "Xhost autostart desktop entry installed/updated."
-        changed=true
-    fi
-
-    if [ "$changed" = false ]; then
-        log INFO "Xhost autostart already configured. No changes needed."
-    fi
+    log INFO "Xhost script installed."
 }
 
 remove_xhost_autostart() {
-    log INFO "Removing Xhost autostart configuration..."
-
+    log INFO "Removing Xhost script..."
     rm -f /usr/local/bin/enable_xhost.sh
-    rm -f "$USER_HOME/.config/autostart/xhost.desktop"
+    log INFO "Xhost script removed."
+}
+# ==========================================================================================
 
-    log INFO "Xhost autostart removed."
+# ===== DISPLAY SETUP =====
+# ==========================================================================================
+setup_autologin() {
+    log INFO "Setting up autologin for $USER_NAME on tty1..."
+
+    mkdir -p "$AUTOLOGIN_DIR"
+
+    cat > "$AUTOLOGIN_CONF" <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
+EOF
+
+    chown root:root "$AUTOLOGIN_CONF"
+    chmod 644 "$AUTOLOGIN_CONF"
+
+    run systemctl daemon-reload
+    run systemctl restart getty@tty1
+
+    log INFO "Autologin configured."
+}
+
+remove_autologin() {
+    log INFO "Removing autologin configuration..."
+    rm -f "$AUTOLOGIN_CONF"
+    run systemctl daemon-reload
+    run systemctl restart getty@tty1
+    log INFO "Autologin removed."
+}
+# ==========================================================================================
+
+# ==========================================================================================
+setup_xinitrc() {
+    log INFO "Setting up .xinitrc for $USER_NAME..."
+
+    cat > "$XINITRC_PATH" <<'EOF'
+#!/bin/sh
+xset s off
+xset -dpms
+xset s noblank
+
+/usr/local/bin/enable_xhost.sh
+
+openbox &
+wait
+EOF
+
+    chown "$USER_NAME:$USER_NAME" "$XINITRC_PATH"
+    chmod 755 "$XINITRC_PATH"
+
+    log INFO ".xinitrc created."
+}
+
+remove_xinitrc() {
+    log INFO "Removing .xinitrc..."
+    rm -f "$XINITRC_PATH"
+    log INFO ".xinitrc removed."
+}
+# ==========================================================================================
+
+# ==========================================================================================
+setup_bash_profile() {
+    log INFO "Setting up .bash_profile for auto startx..."
+
+    cat > "$BASH_PROFILE_PATH" <<EOF
+if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+  exec startx -- -nocursor -auth $USER_HOME/.Xauthority 2>/dev/null
+fi
+EOF
+
+    chown "$USER_NAME:$USER_NAME" "$BASH_PROFILE_PATH"
+    chmod 644 "$BASH_PROFILE_PATH"
+
+    log INFO ".bash_profile created."
+}
+
+remove_bash_profile() {
+    log INFO "Removing .bash_profile..."
+    rm -f "$BASH_PROFILE_PATH"
+    log INFO ".bash_profile removed."
+}
+# ==========================================================================================
+
+# ==========================================================================================
+setup_gpu_memory() {
+    local config_file="/boot/firmware/config.txt"
+    local line="gpu_mem=128"
+
+    if grep -q "^gpu_mem=" "$config_file"; then
+        sed -i "s/^gpu_mem=.*/$line/" "$config_file"
+        log INFO "gpu_mem updated in $config_file."
+    else
+        echo "$line" >> "$config_file"
+        log INFO "gpu_mem added to $config_file."
+    fi
+}
+
+remove_gpu_memory() {
+    local config_file="/boot/firmware/config.txt"
+    sed -i '/^gpu_mem=/d' "$config_file"
+    log INFO "gpu_mem removed from $config_file."
 }
 # ==========================================================================================
 
@@ -395,109 +458,6 @@ remove_display_from_bashrc() {
     fi
 }
 # ==========================================================================================
-
-
-# ===== SYSTEM NOTIFICATIONS & UPDATE SETTINGS =====
-# ==========================================================================================
-disable_apport() {
-    local apport_file="/etc/default/apport"
-
-    if [ -f "$apport_file" ]; then
-        # Check if already disabled
-        if grep -q '^enabled=0' "$apport_file"; then
-            log INFO "Apport crash reporting already disabled, skipping."
-        else
-            sed -i 's/enabled=1/enabled=0/' "$apport_file"
-            log INFO "Apport crash reporting disabled in config file."
-        fi
-    fi
-
-    run systemctl stop apport || true
-    run systemctl disable apport || true
-}
-
-restore_apport() {
-    local apport_file="/etc/default/apport"
-
-    if [ -f "$apport_file" ]; then
-        if grep -q '^enabled=1' "$apport_file"; then
-            log INFO "Apport already enabled, skipping."
-        else
-            sed -i 's/enabled=0/enabled=1/' "$apport_file"
-            log INFO "Apport crash reporting re-enabled."
-        fi
-    fi
-
-    systemctl enable apport || true
-    systemctl start apport || true
-}
-# ==========================================================================================
-
-# ==========================================================================================
-disable_release_upgrade_prompt() {
-    local update_file="/etc/update-manager/release-upgrades"
-
-    if [ -f "$update_file" ]; then
-        # Check if already set
-        if grep -q '^Prompt=never' "$update_file"; then
-            log INFO "Release upgrade prompt already disabled, skipping."
-        else
-            sed -i 's/^Prompt=.*$/Prompt=never/' "$update_file"
-            log INFO "Release upgrade prompt disabled."
-        fi
-    fi
-}
-
-restore_release_upgrade_prompt() {
-    local update_file="/etc/update-manager/release-upgrades"
-
-    if [ -f "$update_file" ]; then
-        if grep -q '^Prompt=never' "$update_file"; then
-            sed -i 's/^Prompt=never/Prompt=lts/' "$update_file"
-            log INFO "Release upgrade prompt restored to default (lts)."
-        else
-            log INFO "Release upgrade prompt already enabled, skipping."
-        fi
-    fi
-}
-# ==========================================================================================
-
-# ==========================================================================================
-disable_update_notifier_popup() {
-    local desktop_file="/etc/xdg/autostart/update-notifier.desktop"
-
-    if [ ! -f "$desktop_file" ]; then
-        log INFO "update-notifier autostart file not found, skipping."
-        return
-    fi
-
-    if [ ! -x "$desktop_file" ]; then
-        log INFO "Update-notifier autostart already disabled, skipping."
-        return
-    fi
-
-    chmod -x "$desktop_file"
-    log INFO "Update-notifier autostart disabled."
-}
-
-restore_update_notifier_popup() {
-    local desktop_file="/etc/xdg/autostart/update-notifier.desktop"
-
-    if [ ! -f "$desktop_file" ]; then
-        log INFO "update-notifier autostart file not found, skipping."
-        return
-    fi
-
-    if [ -x "$desktop_file" ]; then
-        log INFO "Update-notifier autostart already enabled, skipping."
-        return
-    fi
-
-    chmod +x "$desktop_file"
-    log INFO "Update-notifier autostart enabled."
-}
-# ==========================================================================================
-
 
 # ===== UPDATER SERVICE =====
 # ==========================================================================================
@@ -619,15 +579,13 @@ main() {
     add_user_to_docker_group
     docker_login_ghcr
 
-    # 3. GNOME / Display
-    disable_gnome_idle_and_notifications
+    #3. Display
     setup_xhost_autostart
+    setup_autologin
+    setup_xinitrc
+    setup_bash_profile
+    setup_gpu_memory
     ensure_display_in_bashrc
-
-    # 4. System notifications / updates
-    disable_apport
-    disable_release_upgrade_prompt
-    disable_update_notifier_popup
 
     # 5. Setup updater
     setup_edge_updater
@@ -652,20 +610,18 @@ uninstall_main() {
     uninstall_docker_setup
     remove_user_from_docker_group
 
-    # 3. GNOME / Display
-    restore_gnome_idle_and_notifications
+    # 3. Display
     remove_xhost_autostart
+    remove_autologin
+    remove_xinitrc
+    remove_bash_profile
+    remove_gpu_memory
     remove_display_from_bashrc
 
-    # 4. System notifications / updates
-    restore_apport
-    restore_release_upgrade_prompt
-    restore_update_notifier_popup
-
-    # 5. Setup updater
+    # 4. Setup updater
     remove_edge_updater
 
-    # 6. Initial state
+    # 5. Initial state
     remove_edge_agent_state
 
     log INFO "== Uninstall Completed =="
