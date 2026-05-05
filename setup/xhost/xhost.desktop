@@ -1,5 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Enable Xhost
-Exec=/usr/local/bin/enable_xhost.sh
-X-GNOME-Autostart-enabled=true
