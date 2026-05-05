@@ -84,13 +84,14 @@ trap 'log FATAL "Error occurred at line $LINENO. Setup aborted."' ERR
 install_if_missing() {
     local pkg="$1"
 
-    if dpkg -s "$pkg" &>/dev/null; then
+    if dpkg -s "$pkg" 2>/dev/null | grep -q "^Status: install ok installed"; then
         log INFO "Package '$pkg' is already installed."
     else
         log INFO "Package '$pkg' not found. Installing..."
         run apt-get install -y "$pkg"
     fi
 }
+
 uninstall_if_installed() {
     local pkg="$1"
 
