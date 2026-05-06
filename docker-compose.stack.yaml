@@ -19,6 +19,8 @@ services:
       - ${HOME}/.Xauthority:/root/.Xauthority:ro
       - ./data:/app/data
       - ./logs:/app/logs
+      - /etc/machine-id:/etc/machine-id:ro
+
 
     devices:
       - /dev/input
