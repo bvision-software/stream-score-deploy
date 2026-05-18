@@ -27,7 +27,7 @@ XINITRC_PATH="$USER_HOME/.xinitrc"
 BASH_PROFILE_PATH="$USER_HOME/.bash_profile"
 AUTOLOGIN_DIR="/etc/systemd/system/getty@tty1.service.d"
 AUTOLOGIN_CONF="$AUTOLOGIN_DIR/autologin.conf"
-BASE_PACKAGES=(curl ca-certificates gnupg jq xserver-xorg-core xserver-xorg-video-fbdev xinit x11-xserver-utils openbox)
+BASE_PACKAGES=(curl ca-certificates gnupg jq xserver-xorg-core xserver-xorg-video-fbdev xinit x11-xserver-utils openbox cups cups-client poppler-utils libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0)
 # ==================
 
 install_file() {
@@ -567,6 +567,52 @@ remove_edge_agent_state() {
 }
 # ==========================================================================================
 
+# ===== PRINTER SETUP =====
+# ==========================================================================================
+setup_printer() {
+    log INFO "Setting up CUPS printer service..."
+
+    run systemctl enable cups
+    run systemctl start cups
+
+    # Wait for CUPS to become active (max 10s)
+    local timeout=10
+    local waited=0
+    until systemctl is-active --quiet cups; do
+        sleep 1
+        waited=$((waited+1))
+        if [ $waited -ge $timeout ]; then
+            log FATAL "CUPS service did not start within $timeout seconds. Aborting."
+            exit 1
+        fi
+    done
+
+    log INFO "Adding printer: $PRINTER_NAME -> $PRINTER_IP"
+    if lpadmin -p "$PRINTER_NAME" -E -v "ipp://$PRINTER_IP/ipp/print" -m everywhere; then
+        log INFO "Printer added successfully: $PRINTER_NAME"
+    else
+        log INFO "Printer add failed or already exists, continuing."
+    fi
+}
+
+remove_printer() {
+    log INFO "Removing CUPS printer..."
+
+    if command -v lpadmin >/dev/null 2>&1; then
+        lpadmin -x "$PRINTER_NAME" 2>/dev/null \
+            && log INFO "Printer removed: $PRINTER_NAME" \
+            || log INFO "Printer not found or already removed, skipping."
+    else
+        log INFO "lpadmin not available, skipping printer removal."
+    fi
+
+    systemctl stop cups 2>/dev/null || true
+    systemctl disable cups 2>/dev/null || true
+
+    log INFO "CUPS printer removal completed."
+}
+# ==========================================================================================
+
 
 main() {
     log INFO "== Install Started =="
@@ -580,13 +626,16 @@ main() {
     add_user_to_docker_group
     docker_login_ghcr
 
-    #3. Display
+    # 3. Display
     setup_xhost_autostart
     setup_autologin
     setup_xinitrc
     setup_bash_profile
     setup_gpu_memory
     ensure_display_in_bashrc
+
+    # 4. Printer
+    setup_printer
 
     # 5. Setup updater
     setup_edge_updater
@@ -602,6 +651,9 @@ main() {
 
 uninstall_main() {
     log INFO "== Uninstall Started =="
+
+    # 0. Printer (must run before base packages removal)
+    remove_printer
 
     # 1. Base packages
     uninstall_base_packages
