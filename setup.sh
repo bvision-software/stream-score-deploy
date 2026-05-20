@@ -27,6 +27,8 @@ XINITRC_PATH="$USER_HOME/.xinitrc"
 BASH_PROFILE_PATH="$USER_HOME/.bash_profile"
 AUTOLOGIN_DIR="/etc/systemd/system/getty@tty1.service.d"
 AUTOLOGIN_CONF="$AUTOLOGIN_DIR/autologin.conf"
+PRINTER_IP="${PRINTER_IP:-192.168.1.240}" 
+PRINTER_NAME="${PRINTER_NAME:-HP_Laser_MFP_137fnw_5F_F5_C9}"
 BASE_PACKAGES=(curl ca-certificates gnupg jq xserver-xorg-core xserver-xorg-video-fbdev xinit x11-xserver-utils openbox cups cups-client poppler-utils libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0)
 # ==================
 
