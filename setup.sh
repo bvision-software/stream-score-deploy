@@ -573,10 +573,8 @@ remove_edge_agent_state() {
 # ==========================================================================================
 setup_printer() {
     log INFO "Setting up CUPS printer service..."
-
     run systemctl enable cups
     run systemctl start cups
-
     # Wait for CUPS to become active (max 10s)
     local timeout=10
     local waited=0
@@ -590,18 +588,54 @@ setup_printer() {
     done
 
     log INFO "Adding printer: $PRINTER_NAME -> $PRINTER_IP"
-    if lpadmin -p "$PRINTER_NAME" -E -v "ipp://$PRINTER_IP/ipp/print" -m everywhere; then
+    if CUPS_SERVER=/run/cups/cups.sock lpadmin -p "$PRINTER_NAME" -E -v "ipp://$PRINTER_IP/ipp/print" -m everywhere; then
         log INFO "Printer added successfully: $PRINTER_NAME"
     else
         log INFO "Printer add failed or already exists, continuing."
     fi
+
+    # Install boot-time printer registration service.
+    # Reboot / power loss sometimes leaves the printer in printers.conf but
+    # unloaded by cupsd (StateTime 0). This oneshot service re-registers the
+    # printer on every boot so it self-heals without manual lpadmin.
+    log INFO "Installing boot-time printer registration service..."
+    cat > /etc/systemd/system/printer-setup.service <<EOF
+[Unit]
+Description=Register CUPS printer on boot
+After=cups.service
+Requires=cups.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=CUPS_SERVER=/run/cups/cups.sock
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/sbin/lpadmin -p $PRINTER_NAME -E -v "ipp://$PRINTER_IP/ipp/print" -m everywhere
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    chown root:root /etc/systemd/system/printer-setup.service
+    chmod 644 /etc/systemd/system/printer-setup.service
+
+    run systemctl daemon-reload
+    run systemctl enable printer-setup.service
+
+    log INFO "Boot-time printer registration service installed."
 }
 
 remove_printer() {
     log INFO "Removing CUPS printer..."
 
+    # Stop & disable boot-time registration service
+    systemctl stop printer-setup.service 2>/dev/null || true
+    systemctl disable printer-setup.service 2>/dev/null || true
+    rm -f /etc/systemd/system/printer-setup.service
+    systemctl daemon-reload 2>/dev/null || true
+
     if command -v lpadmin >/dev/null 2>&1; then
-        lpadmin -x "$PRINTER_NAME" 2>/dev/null \
+        CUPS_SERVER=/run/cups/cups.sock lpadmin -x "$PRINTER_NAME" 2>/dev/null \
             && log INFO "Printer removed: $PRINTER_NAME" \
             || log INFO "Printer not found or already removed, skipping."
     else
