@@ -13,14 +13,15 @@ services:
       QT_X11_NO_MITSHM: "1"
       QT_QPA_PLATFORM: xcb
       TZ: Europe/Istanbul
-
+      CUPS_SERVER: /run/cups/cups.sock
+      
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${HOME}/.Xauthority:/root/.Xauthority:ro
       - ./data:/app/data
       - ./logs:/app/logs
       - /etc/machine-id:/etc/machine-id:ro
-
+      - /run/cups:/run/cups:rw
 
     devices:
       - /dev/input
