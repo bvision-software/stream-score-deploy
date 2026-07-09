@@ -621,6 +621,7 @@ EOF
 
     run systemctl daemon-reload
     run systemctl enable printer-setup.service
+    run systemctl restart printer-setup.service
 
     log INFO "Boot-time printer registration service installed."
 }
